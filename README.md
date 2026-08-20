@@ -20,6 +20,12 @@ curl -s -X POST http://127.0.0.1:8081/v1/processes/start \
   -d '{"processKey":"purchase","initiator":"alice","parameters":{"amount":150000000}}'
 ```
 
+**لیست اجراها** — یک `processKey` می‌تواند بارها استارت شود (مثلاً خاتمه همکاری چند کارمند):
+
+```bash
+curl -s http://127.0.0.1:8081/v1/processes/employeeTermination/instances
+```
+
 **۲. ارجاع** به شخص، گروه، یا چند نفر. `definitionKey` بگویید این ارجاع برای کدام فرایند است. خروجی: `instanceId` جدید + تسک.
 
 ```bash

@@ -26,6 +26,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("POST /v1/definitions", s.register)
 	s.mux.HandleFunc("GET /v1/definitions/{key}", s.getDefinition)
 	s.mux.HandleFunc("POST /v1/processes/start", s.start)
+	s.mux.HandleFunc("GET /v1/processes/{processKey}/instances", s.listByProcessKey)
 	s.mux.HandleFunc("POST /v1/referrals", s.refer)
 	s.mux.HandleFunc("GET /v1/tasks", s.pendingTasks)
 	s.mux.HandleFunc("GET /v1/inbox", s.pendingTasks)
@@ -120,6 +121,15 @@ func (s *Server) start(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusCreated, out)
+}
+
+func (s *Server) listByProcessKey(w http.ResponseWriter, r *http.Request) {
+	out, err := s.engine.ListByProcessKey(r.Context(), r.PathValue("processKey"))
+	if err != nil {
+		writeErr(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, out)
 }
 
 type toReq struct {

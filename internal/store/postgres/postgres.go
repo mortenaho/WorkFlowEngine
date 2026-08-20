@@ -84,6 +84,7 @@ CREATE TABLE IF NOT EXISTS tasks (
 CREATE INDEX IF NOT EXISTS tasks_instance_idx ON tasks(instance_id);
 CREATE INDEX IF NOT EXISTS tasks_assignee_idx ON tasks(assignee_kind, assignee_id, status);
 CREATE INDEX IF NOT EXISTS tasks_parent_idx ON tasks(parent_instance_id);
+CREATE INDEX IF NOT EXISTS instances_process_idx ON instances(tenant_id, definition_key, parent_instance_id);
 `
 
 const alters = `
@@ -217,6 +218,27 @@ func scanInst(row scanner) (*domain.ProcessInstance, error) {
 	}
 	inst.Parameters = decodeVars(raw)
 	return &inst, nil
+}
+
+func (s *Store) ListRootInstances(ctx context.Context, tenantID, processKey string) ([]*domain.ProcessInstance, error) {
+	rows, err := s.pool.Query(ctx, `
+SELECT id, tenant_id, definition_id, definition_key, parent_instance_id, status, vars, started_by, created_at, updated_at
+FROM instances
+WHERE tenant_id=$1 AND definition_key=$2 AND parent_instance_id=''
+ORDER BY created_at DESC`, domain.NormalizeTenant(tenantID), processKey)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]*domain.ProcessInstance, 0)
+	for rows.Next() {
+		inst, err := scanInst(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, inst)
+	}
+	return out, rows.Err()
 }
 
 func (s *Store) SaveTask(ctx context.Context, task *domain.Task) error {

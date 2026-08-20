@@ -132,3 +132,25 @@ type CompleteResult struct {
 	Task       *Task       `json:"task"`
 	Completion *Completion `json:"completion"`
 }
+
+type ProcessInstanceDetail struct {
+	InstanceID        string         `json:"instanceId"`
+	ProcessKey        string         `json:"processKey"`
+	DefinitionKey     string         `json:"definitionKey"`
+	Initiator         string         `json:"initiator"`
+	Status            InstanceStatus `json:"status"`
+	Parameters        Vars           `json:"parameters,omitempty"`
+	CreatedAt         time.Time      `json:"createdAt"`
+	UpdatedAt         time.Time      `json:"updatedAt"`
+	Tasks             []*Task        `json:"tasks"`
+	TaskTotal         int            `json:"taskTotal"`
+	TasksCompleted    int            `json:"tasksCompleted"`
+	TasksOpen         int            `json:"tasksOpen"`
+	AllTasksCompleted bool           `json:"allTasksCompleted"`
+}
+
+type ProcessList struct {
+	ProcessKey string                   `json:"processKey"`
+	Total      int                      `json:"total"`
+	Instances  []*ProcessInstanceDetail `json:"instances"`
+}

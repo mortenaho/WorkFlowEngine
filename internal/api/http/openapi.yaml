@@ -109,6 +109,44 @@ paths:
         "400":
           $ref: "#/components/responses/Error"
 
+  /v1/processes/{processKey}/instances:
+    get:
+      tags: [Process]
+      summary: لیست اجراهای یک processKey
+      description: |
+        یک processKey می‌تواند بارها استارت شود (مثلاً `employeeTermination` برای چند کارمند).
+        فقط اینستنس‌های **start** برمی‌گردد، نه ارجاع‌های فرزند.
+        هر آیتم پارامترها، وضعیت، تسک‌ها و جمع‌بندی تکمیل را دارد.
+      parameters:
+        - name: processKey
+          in: path
+          required: true
+          schema:
+            type: string
+            example: employeeTermination
+      responses:
+        "200":
+          description: لیست اجراها
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProcessList"
+              example:
+                processKey: employeeTermination
+                total: 2
+                instances:
+                  - instanceId: "aaa"
+                    processKey: employeeTermination
+                    initiator: hr
+                    status: running
+                    parameters:
+                      employeeId: "1001"
+                    taskTotal: 1
+                    tasksOpen: 1
+                    allTasksCompleted: false
+        "400":
+          $ref: "#/components/responses/Error"
+
   /v1/referrals:
     post:
       tags: [Referral]
@@ -603,3 +641,49 @@ components:
         updatedAt:
           type: string
           format: date-time
+    ProcessList:
+      type: object
+      properties:
+        processKey:
+          type: string
+        total:
+          type: integer
+        instances:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProcessInstanceDetail"
+    ProcessInstanceDetail:
+      type: object
+      properties:
+        instanceId:
+          type: string
+        processKey:
+          type: string
+        definitionKey:
+          type: string
+        initiator:
+          type: string
+        status:
+          type: string
+          enum: [running, completed]
+        parameters:
+          type: object
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        tasks:
+          type: array
+          items:
+            $ref: "#/components/schemas/Task"
+        taskTotal:
+          type: integer
+        tasksCompleted:
+          type: integer
+        tasksOpen:
+          type: integer
+        allTasksCompleted:
+          type: boolean

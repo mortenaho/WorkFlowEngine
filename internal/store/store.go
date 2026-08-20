@@ -14,6 +14,7 @@ type Store interface {
 	CreateInstance(ctx context.Context, inst *domain.ProcessInstance) error
 	GetInstance(ctx context.Context, id string) (*domain.ProcessInstance, error)
 	UpdateInstance(ctx context.Context, inst *domain.ProcessInstance) error
+	ListRootInstances(ctx context.Context, tenantID, processKey string) ([]*domain.ProcessInstance, error)
 
 	SaveTask(ctx context.Context, task *domain.Task) error
 	GetTask(ctx context.Context, id string) (*domain.Task, error)

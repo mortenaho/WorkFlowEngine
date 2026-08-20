@@ -117,6 +117,29 @@ func (s *Store) UpdateInstance(_ context.Context, inst *domain.ProcessInstance) 
 	return nil
 }
 
+func (s *Store) ListRootInstances(_ context.Context, tenantID, processKey string) ([]*domain.ProcessInstance, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	tenantID = domain.NormalizeTenant(tenantID)
+	out := make([]*domain.ProcessInstance, 0)
+	for _, inst := range s.instances {
+		if domain.NormalizeTenant(inst.TenantID) != tenantID {
+			continue
+		}
+		if inst.DefinitionKey != processKey {
+			continue
+		}
+		if inst.ParentInstanceID != "" {
+			continue
+		}
+		out = append(out, cloneInst(inst))
+	}
+	slices.SortFunc(out, func(a, b *domain.ProcessInstance) int {
+		return b.CreatedAt.Compare(a.CreatedAt)
+	})
+	return out, nil
+}
+
 func (s *Store) SaveTask(_ context.Context, task *domain.Task) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()

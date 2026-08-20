@@ -3,9 +3,10 @@
 چهار سرویس روی یک کرنل:
 
 1. شروع فرایند
-2. ارجاع به شخص / گروه / چند نفر
-3. کارتابل تسک‌های باز
-4. وضعیت تکمیل همهٔ گیرندگان یک درخواست
+2. لیست اجراهای یک processKey
+3. ارجاع به شخص / گروه / چند نفر
+4. کارتابل تسک‌های باز
+5. وضعیت تکمیل همهٔ گیرندگان یک درخواست
 
 ```bash
 go run ./cmd/server
@@ -15,6 +16,7 @@ go run ./cmd/server
 | کار | درخواست |
 |-----|---------|
 | شروع | `POST /v1/processes/start` با `{ "processKey", "initiator", "parameters?" }` |
+| لیست اجراها | `GET /v1/processes/{processKey}/instances` |
 | ارجاع | `POST /v1/referrals` با `{ "definitionKey", "parentInstanceId?", "to" }` |
 | کارتابل | `GET /v1/tasks?user=bob` یا `?group=legal` |
 | کلیم | `POST /v1/tasks/{id}/claim` |
@@ -101,6 +103,33 @@ POST /v1/processes/start
 ```
 
 اگر `initiator` خالی باشد از `X-Actor-Id` استفاده می‌شود. اگر تعریف برای `processKey` نباشد، ساخته می‌شود.
+
+یک `processKey` بارها استارت می‌شود. مثلاً `employeeTermination` برای هر کارمند یک اینستنس جدا:
+
+```bash
+GET /v1/processes/employeeTermination/instances
+```
+
+```json
+{
+  "processKey": "employeeTermination",
+  "total": 2,
+  "instances": [
+    {
+      "instanceId": "...",
+      "initiator": "hr",
+      "status": "running",
+      "parameters": { "employeeId": "1002" },
+      "tasks": [ ... ],
+      "taskTotal": 1,
+      "tasksOpen": 1,
+      "allTasksCompleted": false
+    }
+  ]
+}
+```
+
+فقط اجراهای start هستند؛ ارجاع‌های فرزند در `tasks` همان اجرا می‌آیند.
 
 ### ارجاع
 

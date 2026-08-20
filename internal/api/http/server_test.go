@@ -165,3 +165,35 @@ func TestReferUsesFromInBody(t *testing.T) {
 		t.Fatalf("%+v", ref.Task)
 	}
 }
+
+func TestHTTPListByProcessKey(t *testing.T) {
+	s := testServer(t)
+	h := s.Handler()
+	w := doJSON(t, h, http.MethodPost, "/v1/processes/start", "hr", map[string]any{
+		"processKey": "employeeTermination",
+		"initiator":  "hr",
+		"parameters": map[string]any{"employeeId": "1001"},
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("start %d %s", w.Code, w.Body.String())
+	}
+	w = doJSON(t, h, http.MethodPost, "/v1/processes/start", "hr", map[string]any{
+		"processKey": "employeeTermination",
+		"initiator":  "hr",
+		"parameters": map[string]any{"employeeId": "1002"},
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("start2 %d %s", w.Code, w.Body.String())
+	}
+	w = doJSON(t, h, http.MethodGet, "/v1/processes/employeeTermination/instances", "hr", nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("list %d %s", w.Code, w.Body.String())
+	}
+	var list workflow.ProcessList
+	if err := json.Unmarshal(w.Body.Bytes(), &list); err != nil {
+		t.Fatal(err)
+	}
+	if list.Total != 2 || len(list.Instances) != 2 {
+		t.Fatalf("%+v", list)
+	}
+}

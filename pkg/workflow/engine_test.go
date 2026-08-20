@@ -242,3 +242,59 @@ func TestCompleteForbiddenForOtherUser(t *testing.T) {
 		t.Fatal("expected forbidden")
 	}
 }
+
+func TestListByProcessKeyReturnsEachStart(t *testing.T) {
+	eng, ctx := testEngine(t)
+	a, err := eng.Start(ctx, "employeeTermination", "hr", workflow.Vars{"employeeId": "1001"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := eng.Start(ctx, "employeeTermination", "hr", workflow.Vars{"employeeId": "1002"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _ = eng.Start(ctx, "purchase", "alice", nil)
+	_, err = eng.Refer(ctx, "hr", workflow.ReferInput{
+		DefinitionKey: a.DefinitionKey, ParentInstanceID: a.InstanceID,
+		ToKind: workflow.AssigneeUser, ToID: "bob",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	list, err := eng.ListByProcessKey(ctx, "employeeTermination")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if list.ProcessKey != "employeeTermination" || list.Total != 2 {
+		t.Fatalf("got total=%d key=%s", list.Total, list.ProcessKey)
+	}
+	ids := map[string]workflow.Vars{}
+	for _, inst := range list.Instances {
+		ids[inst.InstanceID] = inst.Parameters
+		if inst.ProcessKey != "employeeTermination" || inst.Initiator != "hr" {
+			t.Fatalf("%+v", inst)
+		}
+	}
+	if ids[a.InstanceID]["employeeId"] != "1001" || ids[b.InstanceID]["employeeId"] != "1002" {
+		t.Fatalf("params=%v", ids)
+	}
+	var first *workflow.ProcessInstanceDetail
+	for _, inst := range list.Instances {
+		if inst.InstanceID == a.InstanceID {
+			first = inst
+			break
+		}
+	}
+	if first == nil || first.TaskTotal != 1 || first.TasksOpen != 1 {
+		t.Fatalf("expected referral task on first run: %+v", first)
+	}
+
+	empty, err := eng.ListByProcessKey(ctx, "unknown")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if empty.Total != 0 || empty.Instances == nil {
+		t.Fatalf("%+v", empty)
+	}
+}

@@ -107,6 +107,64 @@ func (e *Engine) GetInstance(ctx context.Context, id string) (*domain.ProcessIns
 	return inst, nil
 }
 
+func (e *Engine) ListByProcessKey(ctx context.Context, processKey string) (*domain.ProcessList, error) {
+	processKey = strings.TrimSpace(processKey)
+	if processKey == "" {
+		return nil, fmt.Errorf("%w: processKey is required", domain.ErrInvalid)
+	}
+	roots, err := e.store.ListRootInstances(ctx, domain.TenantID(ctx), processKey)
+	if err != nil {
+		return nil, err
+	}
+	list := &domain.ProcessList{
+		ProcessKey: processKey,
+		Instances:  make([]*domain.ProcessInstanceDetail, 0, len(roots)),
+	}
+	for _, inst := range roots {
+		if domain.NormalizeTenant(inst.TenantID) != domain.TenantID(ctx) {
+			continue
+		}
+		tasks, err := e.store.ListTasks(ctx, domain.TaskFilter{
+			InstanceID: inst.ID,
+			TenantID:   domain.TenantID(ctx),
+		})
+		if err != nil {
+			return nil, err
+		}
+		if tasks == nil {
+			tasks = []*domain.Task{}
+		}
+		detail := detailFrom(inst, processKey, tasks)
+		list.Instances = append(list.Instances, detail)
+	}
+	list.Total = len(list.Instances)
+	return list, nil
+}
+
+func detailFrom(inst *domain.ProcessInstance, processKey string, tasks []*domain.Task) *domain.ProcessInstanceDetail {
+	d := &domain.ProcessInstanceDetail{
+		InstanceID:    inst.ID,
+		ProcessKey:    processKey,
+		DefinitionKey: inst.DefinitionKey,
+		Initiator:     inst.StartedBy,
+		Status:        inst.Status,
+		Parameters:    inst.Parameters.Clone(),
+		CreatedAt:     inst.CreatedAt,
+		UpdatedAt:     inst.UpdatedAt,
+		Tasks:         tasks,
+		TaskTotal:     len(tasks),
+	}
+	for _, t := range tasks {
+		if t.Status == domain.TaskDone {
+			d.TasksCompleted++
+		} else {
+			d.TasksOpen++
+		}
+	}
+	d.AllTasksCompleted = d.TaskTotal > 0 && d.TasksOpen == 0
+	return d
+}
+
 func (e *Engine) Refer(ctx context.Context, actor string, in domain.ReferInput) (*domain.ReferResult, error) {
 	actor = strings.TrimSpace(actor)
 	if actor == "" {

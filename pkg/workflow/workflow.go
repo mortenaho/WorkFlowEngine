@@ -12,22 +12,24 @@ import (
 )
 
 type (
-	AssigneeKind   = domain.AssigneeKind
-	InstanceStatus = domain.InstanceStatus
-	Vars           = domain.Vars
-	Definition     = domain.Definition
-	Instance       = domain.ProcessInstance
-	TaskStatus     = domain.TaskStatus
-	Task           = domain.Task
-	TaskFilter     = domain.TaskFilter
-	StartResult    = domain.StartResult
-	ReferInput     = domain.ReferInput
-	ReferResult    = domain.ReferResult
-	Completion     = domain.Completion
-	CompleteResult = domain.CompleteResult
-	Store          = store.Store
-	Directory      = identity.Directory
-	EngineOption   = engine.Option
+	AssigneeKind          = domain.AssigneeKind
+	InstanceStatus        = domain.InstanceStatus
+	Vars                  = domain.Vars
+	Definition            = domain.Definition
+	Instance              = domain.ProcessInstance
+	TaskStatus            = domain.TaskStatus
+	Task                  = domain.Task
+	TaskFilter            = domain.TaskFilter
+	StartResult           = domain.StartResult
+	ReferInput            = domain.ReferInput
+	ReferResult           = domain.ReferResult
+	Completion            = domain.Completion
+	CompleteResult        = domain.CompleteResult
+	ProcessList           = domain.ProcessList
+	ProcessInstanceDetail = domain.ProcessInstanceDetail
+	Store                 = store.Store
+	Directory             = identity.Directory
+	EngineOption          = engine.Option
 )
 
 const (
@@ -118,6 +120,10 @@ func (e *Engine) CompleteTask(ctx context.Context, taskID, actor, note string, p
 
 func (e *Engine) GetInstance(ctx context.Context, id string) (*Instance, error) {
 	return e.inner.GetInstance(ctx, id)
+}
+
+func (e *Engine) ListByProcessKey(ctx context.Context, processKey string) (*ProcessList, error) {
+	return e.inner.ListByProcessKey(ctx, processKey)
 }
 
 func (e *Engine) GetTask(ctx context.Context, id string) (*Task, error) {
