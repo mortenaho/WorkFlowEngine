@@ -1,0 +1,605 @@
+openapi: 3.0.3
+info:
+  title: Workflow Engine
+  version: "2.0"
+  description: |
+    سرویس‌بیس: شروع فرایند، ارجاع به شخص یا گروه، کارتابل، وضعیت تکمیل چندنفره.
+
+    بازیگر: هدر `X-Actor-Id`. پورت پیش‌فرض `8081`.
+servers:
+  - url: /
+    description: همین سرور
+tags:
+  - name: Process
+    description: شروع فرایند توسط initiator
+  - name: Referral
+    description: ارجاع به شخص / گروه / چند نفر
+  - name: Tasks
+    description: کارتابل و تکمیل تسک
+  - name: Health
+security:
+  - Actor: []
+    Tenant: []
+    ApiKey: []
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: سلامت سرویس
+      security: []
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  /v1/definitions:
+    post:
+      tags: [Process]
+      summary: ثبت نوع فرایند (اختیاری؛ start هم می‌سازد)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterDefinition"
+            example:
+              key: purchase
+              name: درخواست خرید
+      responses:
+        "201":
+          description: تعریف
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Definition"
+        "400":
+          $ref: "#/components/responses/Error"
+
+  /v1/definitions/{key}:
+    get:
+      tags: [Process]
+      summary: گرفتن تعریف با کلید
+      parameters:
+        - $ref: "#/components/parameters/Key"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Definition"
+        "404":
+          $ref: "#/components/responses/Error"
+
+  /v1/processes/start:
+    post:
+      tags: [Process]
+      summary: شروع فرایند
+      description: |
+        ورودی `processKey` و `initiator`. پارامتر اختیاری است.
+        خروجی `definitionKey` و `instanceId`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartProcess"
+            example:
+              processKey: purchase
+              initiator: alice
+              parameters:
+                amount: 150000000
+      responses:
+        "201":
+          description: فرایند شروع شد
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StartResult"
+              example:
+                definitionKey: purchase
+                instanceId: "a1b2c3"
+        "400":
+          $ref: "#/components/responses/Error"
+
+  /v1/referrals:
+    post:
+      tags: [Referral]
+      summary: ارجاع به شخص، گروه، یا چند نفر
+      description: |
+        `definitionKey` بگویید این ارجاع برای کدام فرایند است.
+        خروجی یک `instanceId` جدید برای همین درخواست و تسک(ها).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateReferral"
+            examples:
+              person:
+                summary: به یک شخص
+                value:
+                  definitionKey: purchase
+                  parentInstanceId: "a1b2c3"
+                  from: alice
+                  title: بررسی حقوقی
+                  to:
+                    kind: user
+                    id: bob
+              group:
+                summary: به یک گروه
+                value:
+                  definitionKey: purchase
+                  parentInstanceId: "a1b2c3"
+                  from: alice
+                  title: بررسی مالی
+                  to:
+                    kind: group
+                    id: finance
+              multi:
+                summary: به چند نفر
+                value:
+                  definitionKey: purchase
+                  parentInstanceId: "a1b2c3"
+                  from: alice
+                  title: تأیید موازی
+                  to:
+                    kind: users
+                    ids: [bob, cara, dan]
+      responses:
+        "201":
+          description: اینستنس ارجاع و تسک
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReferResult"
+        "400":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+
+  /v1/tasks:
+    get:
+      tags: [Tasks]
+      summary: تسک‌های باز دست شخص یا گروه
+      parameters:
+        - name: user
+          in: query
+          schema:
+            type: string
+            example: bob
+          description: اگر خالی باشد از X-Actor-Id
+        - name: group
+          in: query
+          schema:
+            type: string
+            example: legal
+      responses:
+        "200":
+          description: لیست تسک‌های open
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Task"
+
+  /v1/inbox:
+    get:
+      tags: [Tasks]
+      summary: کارتابل (همان GET /v1/tasks)
+      parameters:
+        - name: user
+          in: query
+          schema:
+            type: string
+            example: bob
+        - name: group
+          in: query
+          schema:
+            type: string
+            example: legal
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Task"
+
+  /v1/tasks/{id}:
+    get:
+      tags: [Tasks]
+      summary: یک تسک
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "404":
+          $ref: "#/components/responses/Error"
+
+  /v1/tasks/{id}/claim:
+    post:
+      tags: [Tasks]
+      summary: کلیم تسک
+      description: |
+        تسک `open` را برمی‌دارد و `claimed` می‌کند.
+        برای تسک گروهی فقط اعضای گروه می‌توانند کلیم کنند؛ نفر دوم `409` می‌گیرد.
+        بعد از کلیم، فقط همان نفر complete می‌کند. بقیهٔ اعضا دیگر آن را در کارتابل نمی‌بینند.
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActorRequest"
+            example:
+              from: bob
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "400":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+
+  /v1/tasks/{id}/unclaim:
+    post:
+      tags: [Tasks]
+      summary: آزاد کردن تسک کلیم‌شده
+      description: فقط `claimedBy` می‌تواند unclaim کند؛ تسک به `open` برمی‌گردد.
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActorRequest"
+            example:
+              from: bob
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "400":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+
+  /v1/tasks/{id}/complete:
+    post:
+      tags: [Tasks]
+      summary: تکمیل تسک
+      description: |
+        تسک شخصی از `open` یا `claimed` complete می‌شود.
+        تسک گروهی اول باید کلیم شده باشد؛ فقط `claimedBy` می‌تواند complete کند.
+        در خروجی `completion.allCompleted` می‌گوید آیا همهٔ تسک‌های همین درخواست تمام شده‌اند.
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompleteRequest"
+            example:
+              note: تأیید شد
+              parameters:
+                approved: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompleteResult"
+        "400":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+
+  /v1/instances/{id}:
+    get:
+      tags: [Process]
+      summary: یک اینستنس
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Instance"
+        "404":
+          $ref: "#/components/responses/Error"
+
+  /v1/instances/{id}/tasks:
+    get:
+      tags: [Tasks]
+      summary: تسک‌های این اینستنس (و ارجاع‌های فرزند)
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Task"
+
+  /v1/instances/{id}/completion:
+    get:
+      tags: [Referral]
+      summary: آیا همه تسک‌های این درخواست تکمیل شده‌اند
+      description: |
+        `id` همان `instanceId` برگشتی از ارجاع است.
+        اگر درخواست به چند نفر رفته باشد، `allCompleted` وقتی true است که همه complete کرده باشند.
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Completion"
+              example:
+                instanceId: "d4e5f6"
+                allCompleted: false
+                total: 3
+                completed: 1
+                open: 2
+        "404":
+          $ref: "#/components/responses/Error"
+
+components:
+  securitySchemes:
+    Actor:
+      type: apiKey
+      in: header
+      name: X-Actor-Id
+    Tenant:
+      type: apiKey
+      in: header
+      name: X-Tenant-Id
+    ApiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+  parameters:
+    ID:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+    Key:
+      name: key
+      in: path
+      required: true
+      schema:
+        type: string
+        example: purchase
+  responses:
+    Error:
+      description: خطا
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+  schemas:
+    RegisterDefinition:
+      type: object
+      required: [key]
+      properties:
+        key:
+          type: string
+          example: purchase
+        name:
+          type: string
+          example: درخواست خرید
+    Definition:
+      type: object
+      properties:
+        id:
+          type: string
+        key:
+          type: string
+        name:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    StartProcess:
+      type: object
+      required: [processKey]
+      properties:
+        processKey:
+          type: string
+          example: purchase
+        initiator:
+          type: string
+          example: alice
+        parameters:
+          type: object
+          additionalProperties: true
+    StartResult:
+      type: object
+      properties:
+        definitionKey:
+          type: string
+          example: purchase
+        instanceId:
+          type: string
+    CreateReferral:
+      type: object
+      required: [to]
+      properties:
+        definitionKey:
+          type: string
+          example: purchase
+        parentInstanceId:
+          type: string
+          description: instanceId برگشتی از start
+        from:
+          type: string
+          description: ارجاع‌دهنده. اگر خالی باشد از X-Actor-Id
+          example: alice
+        title:
+          type: string
+        parameters:
+          type: object
+          additionalProperties: true
+        to:
+          $ref: "#/components/schemas/Assignee"
+    Assignee:
+      type: object
+      required: [kind]
+      properties:
+        kind:
+          type: string
+          enum: [user, group, users]
+        id:
+          type: string
+          description: برای user یا group
+        ids:
+          type: array
+          items:
+            type: string
+          description: برای users
+    ReferResult:
+      type: object
+      properties:
+        instanceId:
+          type: string
+        definitionKey:
+          type: string
+        task:
+          $ref: "#/components/schemas/Task"
+        tasks:
+          type: array
+          items:
+            $ref: "#/components/schemas/Task"
+    Task:
+      type: object
+      properties:
+        id:
+          type: string
+        instanceId:
+          type: string
+        parentInstanceId:
+          type: string
+        definitionKey:
+          type: string
+        title:
+          type: string
+        assigneeKind:
+          type: string
+          enum: [user, group]
+        assigneeId:
+          type: string
+        assignedBy:
+          type: string
+        claimedBy:
+          type: string
+        status:
+          type: string
+          enum: [open, claimed, done]
+        note:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+    ActorRequest:
+      type: object
+      properties:
+        from:
+          type: string
+          example: bob
+    CompleteRequest:
+      type: object
+      properties:
+        from:
+          type: string
+        note:
+          type: string
+        parameters:
+          type: object
+          additionalProperties: true
+    CompleteResult:
+      type: object
+      properties:
+        task:
+          $ref: "#/components/schemas/Task"
+        completion:
+          $ref: "#/components/schemas/Completion"
+    Completion:
+      type: object
+      properties:
+        instanceId:
+          type: string
+        allCompleted:
+          type: boolean
+        total:
+          type: integer
+        completed:
+          type: integer
+        open:
+          type: integer
+        tasks:
+          type: array
+          items:
+            $ref: "#/components/schemas/Task"
+    Instance:
+      type: object
+      properties:
+        id:
+          type: string
+        definitionId:
+          type: string
+        definitionKey:
+          type: string
+        parentInstanceId:
+          type: string
+        status:
+          type: string
+          enum: [running, completed]
+        parameters:
+          type: object
+          additionalProperties: true
+        initiator:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time

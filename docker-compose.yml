@@ -1,0 +1,35 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: workflow
+      POSTGRES_PASSWORD: workflow
+      POSTGRES_DB: workflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U workflow -d workflow"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  engine:
+    build: .
+    ports:
+      - "8081:8080"
+    environment:
+      ADDR: ":8080"
+      DATABASE_URL: postgres://workflow:workflow@postgres:5432/workflow?sslmode=disable
+      WF_USERS: alice,bob,cara,dan,manager,ceo
+      WF_GROUP_LEGAL: bob,cara
+      WF_GROUP_FINANCE: dan,cara
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:

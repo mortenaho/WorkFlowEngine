@@ -1,0 +1,7 @@
+/server
+/coverage.out
+*.exe
+.idea/
+.vscode/
+graphify-out/
+data/
