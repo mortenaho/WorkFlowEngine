@@ -339,6 +339,7 @@ paths:
             schema:
               $ref: "#/components/schemas/CompleteRequest"
             example:
+              from: bob
               note: تأیید شد
               parameters:
                 approved: true
@@ -587,6 +588,8 @@ components:
       properties:
         from:
           type: string
+          description: تکمیل‌کننده. اگر خالی باشد از X-Actor-Id
+          example: bob
         note:
           type: string
         parameters:
