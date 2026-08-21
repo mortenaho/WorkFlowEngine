@@ -1,6 +1,12 @@
-# نمونه curl
+# نمونه‌ها
 
-سرور: `go run ./cmd/server` روی `:8081`.
+سناریوی خاتمه همکاری (خروجی JSON هر گام):
+
+```bash
+go run ./examples/scenario
+```
+
+سرور REST: `go run ./cmd/server` روی `:8081`.
 
 ```bash
 ./examples/curl.sh
