@@ -1,14 +1,18 @@
 # Workflow Engine
 
-سرویس ارجاع و گردش کار. گراف BPMN ندارد؛ اپ شما چهار سرویس را صدا می‌زند.
+سرویس ارجاع و گردش کار روی ASP.NET Core (`net10.0`). گراف BPMN ندارد؛ اپ شما چهار سرویس را صدا می‌زند.
 
 ```bash
-go run ./cmd/server
+dotnet run --project src/WorkflowEngine.Server
 ```
 
 Swagger: [http://127.0.0.1:8081/swagger](http://127.0.0.1:8081/swagger)
 
 هدر همهٔ درخواست‌ها: `X-Actor-Id`.
+
+```bash
+dotnet test
+```
 
 ## سرویس‌ها
 
@@ -58,5 +62,20 @@ curl -s http://127.0.0.1:8081/v1/instances/REFERRAL_INSTANCE/completion
 ```
 
 `allCompleted` در پاسخ `POST /v1/tasks/{id}/complete` هم هست.
+
+## Docker
+
+```bash
+docker compose up --build
+```
+
+| متغیر | پیش‌فرض | معنی |
+|--------|---------|------|
+| `ADDR` | `:8081` | آدرس listen |
+| `DATABASE_URL` | خالی | Postgres؛ وگرنه حافظه |
+| `WF_USERS` | `alice,bob,cara,dan,manager,ceo` | کاربران |
+| `WF_GROUP_LEGAL` | `bob,cara` | اعضای `legal` |
+| `WF_GROUP_FINANCE` | `dan,cara` | اعضای `finance` |
+| `WF_API_KEYS` | خالی | اگر ست شود همهٔ مسیرها جز `/health` و swagger کلید می‌خواهند |
 
 جزئیات: [docs/usage.md](docs/usage.md)

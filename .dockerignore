@@ -1,12 +1,4 @@
-.git
-.idea
-.vscode
-*.exe
-/server
-coverage.out
-graphify-out
-docs
-**/*_test.go
-Dockerfile
-docker-compose.yml
-.dockerignore
+**/bin/
+**/obj/
+**/.vs/
+*.user

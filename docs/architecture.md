@@ -1,7 +1,5 @@
 # معماری سرویس‌بیس
 
-ماژول Go: `github.com/mortenaho/workflowengine`.
-
 این انجین گراف BPMN تفسیر نمی‌کند. چهار سرویس روی یک مدل سادهٔ تعریف / اینستنس / تسک سوار است.
 
 ---
@@ -10,38 +8,35 @@
 
 ```
 WorkFlowEngine/
-├── cmd/server/main.go
+├── src/WorkflowEngine/              # کتابخانه: Engine + Domain + Store
+│   ├── Domain/
+│   ├── Identity/                    # Directory کاربر/گروه
+│   └── Store/                       # memory + postgres
+├── src/WorkflowEngine.Server/       # REST + Swagger
+├── tests/WorkflowEngine.Tests/
 ├── examples/curl.sh
-├── docs/
-│   ├── usage.md
-│   └── architecture.md
-├── pkg/workflow/          # SDK عمومی
-├── internal/
-│   ├── domain/
-│   ├── engine/            # منطق سرویس‌ها
-│   ├── identity/          # Directory کاربر/گروه
-│   ├── store/             # memory + postgres
-│   └── api/http/          # REST + Swagger
+└── docs/
+    ├── usage.md
+    └── architecture.md
 ```
 
 ```
-cmd/server  →  pkg/workflow + internal/api/http + internal/store/postgres
-pkg/workflow  →  internal/engine + internal/domain + internal/store + internal/identity
-internal/engine  →  domain, store, identity
-internal/api/http  →  pkg/workflow
+WorkflowEngine.Server  →  WorkflowEngine
+WorkflowEngine         →  Domain, Store, Identity
+Engine                 →  Domain, IStore, IDirectory
 ```
 
-| پکیج | نقش |
+| پروژه / پوشه | نقش |
 |------|------|
-| `pkg/workflow` | SDK: `Start`, `Refer`, `PendingTasks`, `CompleteTask`, `Completion` |
-| `internal/engine` | قوانین شروع، ارجاع، مجوز تکمیل |
-| `internal/domain` | `Definition`, `ProcessInstance`, `Task` |
-| `internal/store` | persistence |
-| `internal/identity` | `Directory`؛ انجین مالک HR نیست |
-| `internal/api/http` | REST |
+| `src/WorkflowEngine` | SDK: `Start`, `Refer`, `PendingTasks`, `CompleteTask`, `Completion` |
+| `Engine` | قوانین شروع، ارجاع، مجوز تکمیل |
+| `Domain` | `Definition`, `ProcessInstance`, `WorkflowTask` |
+| `Store` | persistence |
+| `Identity` | `IDirectory`؛ انجین مالک HR نیست |
+| `WorkflowEngine.Server` | REST |
 
 ```bash
-go run ./cmd/server
+dotnet run --project src/WorkflowEngine.Server
 ```
 
 | متغیر | پیش‌فرض | معنی |
@@ -84,7 +79,7 @@ flowchart LR
 
 ## ۳. دیتابیس
 
-اگر `DATABASE_URL` ست باشد `internal/store/postgres` اسکیما را می‌سازد.
+اگر `DATABASE_URL` ست باشد `PostgresStore` اسکیما را می‌سازد.
 
 ```mermaid
 erDiagram

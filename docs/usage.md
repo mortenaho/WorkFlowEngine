@@ -9,7 +9,7 @@
 5. وضعیت تکمیل همهٔ گیرندگان یک درخواست
 
 ```bash
-go run ./cmd/server
+dotnet run --project src/WorkflowEngine.Server
 # Swagger: http://127.0.0.1:8081/swagger
 ```
 
@@ -24,7 +24,7 @@ go run ./cmd/server
 | وضعیت چندنفره | `GET /v1/instances/{id}/completion` |
 | تکمیل تسک | `POST /v1/tasks/{id}/complete` |
 
-دو راه مصرف: SDK در `pkg/workflow` و REST. نمونه curl: [`examples/curl.sh`](../examples/curl.sh).
+دو راه مصرف: کتابخانهٔ `WorkflowEngine` و REST. نمونه curl: [`examples/curl.sh`](../examples/curl.sh).
 
 ---
 
@@ -44,46 +44,47 @@ go run ./cmd/server
 
 ## ۲. SDK
 
-```go
-dir := workflow.NewStaticDirectory(
-    []string{"alice", "bob", "cara", "dan"},
-    map[string][]string{
-        "legal":   {"bob", "cara"},
-        "finance": {"dan", "cara"},
-    },
-)
-eng := workflow.NewEngine(workflow.NewMemoryStore(), dir)
-ctx := context.Background()
+```csharp
+var dir = new StaticDirectory(
+    ["alice", "bob", "cara", "dan"],
+    new Dictionary<string, IReadOnlyList<string>>
+    {
+        ["legal"] = ["bob", "cara"],
+        ["finance"] = ["dan", "cara"],
+    });
+var eng = new Engine(new MemoryStore(), dir);
 
-started, err := eng.Start(ctx, "purchase", "alice", workflow.Vars{"amount": 1.5e8})
-// started.DefinitionKey, started.InstanceID
+var started = await eng.Start("purchase", "alice", new Dictionary<string, object?> { ["amount"] = 1.5e8 });
+// started.DefinitionKey, started.InstanceId
 
-ref, err := eng.Refer(ctx, "alice", workflow.ReferInput{
-    DefinitionKey:    started.DefinitionKey,
-    ParentInstanceID: started.InstanceID,
-    Title:            "بررسی حقوقی",
-    ToKind:           workflow.AssigneeUser, // یا AssigneeGroup / AssigneeUsers
-    ToID:             "bob",
-    // ToIDs: []string{"bob", "cara"}, // برای AssigneeUsers
-})
-// ref.InstanceID, ref.Task / ref.Tasks
+var refer = await eng.Refer("alice", new ReferInput
+{
+    DefinitionKey = started.DefinitionKey,
+    ParentInstanceId = started.InstanceId,
+    Title = "بررسی حقوقی",
+    ToKind = AssigneeKind.User, // یا AssigneeKind.Group / AssigneeKind.Users
+    ToId = "bob",
+    // ToIds = ["bob", "cara"], // برای AssigneeKind.Users
+});
+// refer.InstanceId, refer.Task / refer.Tasks
 
-inbox, _ := eng.PendingTasks(ctx, "bob", "")
-groupInbox, _ := eng.PendingTasks(ctx, "", "legal")
+var inbox = await eng.PendingTasks("bob", "");
+var groupInbox = await eng.PendingTasks("", "legal");
 
-done, _ := eng.CompleteTask(ctx, ref.Task.ID, "bob", "تأیید شد", nil)
-_ = done.Completion.AllCompleted
+var done = await eng.CompleteTask(refer.Task!.Id, "bob", "تأیید شد");
+_ = done.Completion.AllCompleted;
 
-comp, _ := eng.Completion(ctx, ref.InstanceID)
+var comp = await eng.Completion(refer.InstanceId);
 ```
 
-در پروداکشن `Directory` را روی LDAP / سرویس هویت خود پیاده کنید:
+در پروداکشن `IDirectory` را روی LDAP / سرویس هویت خود پیاده کنید:
 
-```go
-type Directory interface {
-    UserExists(ctx context.Context, userID string) (bool, error)
-    GroupMembers(ctx context.Context, groupID string) ([]string, error)
-    UserGroups(ctx context.Context, userID string) ([]string, error)
+```csharp
+public interface IDirectory
+{
+    Task<bool> UserExists(string userId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<string>> GroupMembers(string groupId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<string>> UserGroups(string userId, CancellationToken cancellationToken = default);
 }
 ```
 

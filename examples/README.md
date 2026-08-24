@@ -1,12 +1,6 @@
 # نمونه‌ها
 
-سناریوی خاتمه همکاری (خروجی JSON هر گام):
-
-```bash
-go run ./examples/scenario
-```
-
-سرور REST: `go run ./cmd/server` روی `:8081`.
+سرور REST: `dotnet run --project src/WorkflowEngine.Server` روی `:8081`.
 
 ```bash
 ./examples/curl.sh

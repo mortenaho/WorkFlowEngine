@@ -1,21 +1,22 @@
 # syntax=docker/dockerfile:1
 
-FROM golang:1.25-alpine AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
-RUN apk add --no-cache git ca-certificates
-COPY go.mod go.sum ./
-RUN go mod download
-COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/workflow-engine ./cmd/server
+COPY src/WorkflowEngine/ ./src/WorkflowEngine/
+COPY src/WorkflowEngine.Server/ ./src/WorkflowEngine.Server/
+RUN dotnet publish src/WorkflowEngine.Server/WorkflowEngine.Server.csproj -c Release -o /out
 
-FROM alpine:3.21
-RUN apk add --no-cache ca-certificates tzdata wget \
-    && adduser -D -H -u 10001 app
+FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
-COPY --from=build /out/workflow-engine /usr/local/bin/workflow-engine
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --uid 10001 --create-home --shell /usr/sbin/nologin app
+COPY --from=build /out ./
 ENV ADDR=:8080
+ENV ASPNETCORE_URLS=http://0.0.0.0:8080
 EXPOSE 8080
 USER app
-HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=5 \
-    CMD wget -qO- http://127.0.0.1:8080/health >/dev/null || exit 1
-CMD ["workflow-engine"]
+HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=5 \
+    CMD curl -fsS http://127.0.0.1:8080/health >/dev/null || exit 1
+ENTRYPOINT ["dotnet", "WorkflowEngine.Server.dll"]

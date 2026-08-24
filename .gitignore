@@ -1,7 +1,8 @@
-/server
-/coverage.out
-*.exe
+**/bin/
+**/obj/
+*.user
 .idea/
 .vscode/
 graphify-out/
 data/
+.cursor/
