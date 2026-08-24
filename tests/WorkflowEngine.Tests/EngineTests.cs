@@ -205,4 +205,142 @@ public class EngineTests
         Assert.Equal(0, empty.Total);
         Assert.NotNull(empty.Instances);
     }
+
+    [Fact]
+    public async Task ReferUnknownDefinitionFails()
+    {
+        var eng = Fixtures.NewEngine();
+        var ex = await Assert.ThrowsAsync<EngineException>(() => eng.Refer("alice", new ReferInput
+        {
+            DefinitionKey = "missing",
+            ToKind = AssigneeKind.User,
+            ToId = "bob",
+        }));
+        Assert.Equal(EngineErrorKind.NotFound, ex.Kind);
+    }
+
+    [Fact]
+    public async Task ReferEmptyGroupFails()
+    {
+        var eng = Fixtures.NewEngine();
+        var started = await eng.Start("purchase", "alice");
+        var ex = await Assert.ThrowsAsync<EngineException>(() => eng.Refer("alice", new ReferInput
+        {
+            DefinitionKey = started.DefinitionKey,
+            ToKind = AssigneeKind.Group,
+            ToId = "unknown-group",
+        }));
+        Assert.Equal(EngineErrorKind.EmptyGroup, ex.Kind);
+    }
+
+    [Fact]
+    public async Task ReferMismatchedDefinitionKeyFails()
+    {
+        var eng = Fixtures.NewEngine();
+        var purchase = await eng.Start("purchase", "alice");
+        await eng.Start("leave", "alice");
+        var ex = await Assert.ThrowsAsync<EngineException>(() => eng.Refer("alice", new ReferInput
+        {
+            DefinitionKey = "leave",
+            ParentInstanceId = purchase.InstanceId,
+            ToKind = AssigneeKind.User,
+            ToId = "bob",
+        }));
+        Assert.Equal(EngineErrorKind.Invalid, ex.Kind);
+    }
+
+    [Fact]
+    public async Task PersonalTaskCompletesWithoutClaim()
+    {
+        var eng = Fixtures.NewEngine();
+        var started = await eng.Start("purchase", "alice");
+        var refer = await eng.Refer("alice", new ReferInput
+        {
+            DefinitionKey = started.DefinitionKey,
+            ToKind = AssigneeKind.User,
+            ToId = "bob",
+        });
+        var done = await eng.CompleteTask(refer.Task!.Id, "bob", "ok");
+        Assert.Equal(TaskStatus.Done, done.Task.Status);
+        Assert.True(done.Completion.AllCompleted);
+    }
+
+    [Fact]
+    public async Task ConcurrentClaimOnlyOneWins()
+    {
+        var eng = Fixtures.NewEngine();
+        var started = await eng.Start("purchase", "alice");
+        var refer = await eng.Refer("alice", new ReferInput
+        {
+            DefinitionKey = started.DefinitionKey,
+            ToKind = AssigneeKind.Group,
+            ToId = "legal",
+        });
+
+        var t1 = eng.ClaimTask(refer.Task!.Id, "bob");
+        var t2 = eng.ClaimTask(refer.Task.Id, "cara");
+        var results = await Task.WhenAll(
+            Wrap(t1),
+            Wrap(t2));
+
+        Assert.Single(results.Where(r => r.Ok));
+        Assert.Single(results.Where(r => !r.Ok && r.Kind == EngineErrorKind.AlreadyClaimed));
+        var claimed = results.Single(r => r.Ok).Task!;
+        Assert.Equal(TaskStatus.Claimed, claimed.Status);
+        Assert.True(claimed.ClaimedBy is "bob" or "cara");
+    }
+
+    [Fact]
+    public async Task TenantsAreIsolated()
+    {
+        var store = new MemoryStore();
+        var dir = new StaticDirectory(
+            ["alice", "bob"],
+            new Dictionary<string, IReadOnlyList<string>> { ["legal"] = ["bob"] });
+        var eng = new Engine(store, dir);
+
+        string acmeId;
+        using (TenantContext.Use("acme"))
+        {
+            var started = await eng.Start("purchase", "alice");
+            acmeId = started.InstanceId;
+            await eng.Refer("alice", new ReferInput
+            {
+                DefinitionKey = started.DefinitionKey,
+                ParentInstanceId = started.InstanceId,
+                ToKind = AssigneeKind.User,
+                ToId = "bob",
+            });
+        }
+
+        using (TenantContext.Use("other"))
+        {
+            var ex = await Assert.ThrowsAsync<EngineException>(() => eng.GetInstance(acmeId));
+            Assert.Equal(EngineErrorKind.ForbiddenTenant, ex.Kind);
+            var list = await eng.ListByProcessKey("purchase");
+            Assert.Equal(0, list.Total);
+            var started = await eng.Start("purchase", "alice");
+            Assert.NotEqual(acmeId, started.InstanceId);
+        }
+
+        using (TenantContext.Use("acme"))
+        {
+            var inst = await eng.GetInstance(acmeId);
+            Assert.Equal("alice", inst.StartedBy);
+            var list = await eng.ListByProcessKey("purchase");
+            Assert.Equal(1, list.Total);
+        }
+    }
+
+    private static async Task<(bool Ok, EngineErrorKind? Kind, WorkflowTask? Task)> Wrap(Task<WorkflowTask> task)
+    {
+        try
+        {
+            return (true, null, await task);
+        }
+        catch (EngineException ex)
+        {
+            return (false, ex.Kind, null);
+        }
+    }
 }

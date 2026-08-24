@@ -122,7 +122,11 @@ public sealed class MemoryStore : IStore
     {
         lock (_mu)
         {
-            var outList = _tasks.Values.Where(t => Match(t, filter)).Select(t => t.Clone()).ToList();
+            var outList = _tasks.Values
+                .Where(t => Match(t, filter))
+                .Select(t => t.Clone())
+                .OrderBy(t => t.CreatedAt)
+                .ToList();
             return Task.FromResult<IReadOnlyList<WorkflowTask>>(outList);
         }
     }

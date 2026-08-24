@@ -9,6 +9,13 @@ builder.Services.ConfigureHttpJsonOptions(o =>
     o.SerializerOptions.DefaultIgnoreCondition = JsonConfig.Options.DefaultIgnoreCondition;
 });
 
+builder.WebHost.ConfigureKestrel(o =>
+{
+    o.AddServerHeader = false;
+    o.Limits.KeepAliveTimeout = TimeSpan.FromSeconds(30);
+    o.Limits.RequestHeadersTimeout = TimeSpan.FromSeconds(15);
+});
+
 if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ASPNETCORE_URLS")))
 {
     var addr = Environment.GetEnvironmentVariable("ADDR") ?? ":8081";

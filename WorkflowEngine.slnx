@@ -3,6 +3,9 @@
     <Project Path="src/WorkflowEngine.Server/WorkflowEngine.Server.csproj" />
     <Project Path="src/WorkflowEngine/WorkflowEngine.csproj" />
   </Folder>
+  <Folder Name="/examples/">
+    <Project Path="examples/Scenario/Scenario.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/WorkflowEngine.Tests/WorkflowEngine.Tests.csproj" />
   </Folder>

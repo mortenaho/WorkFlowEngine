@@ -28,10 +28,12 @@ public class HttpTests : IAsyncLifetime
         await _app.DisposeAsync();
     }
 
-    private async Task<HttpResponseMessage> DoJson(HttpMethod method, string path, string actor, object? body)
+    private async Task<HttpResponseMessage> DoJson(HttpMethod method, string path, string actor, object? body, string? tenant = null)
     {
         var req = new HttpRequestMessage(method, path);
         req.Headers.TryAddWithoutValidation("X-Actor-Id", actor);
+        if (!string.IsNullOrEmpty(tenant))
+            req.Headers.TryAddWithoutValidation("X-Tenant-Id", tenant);
         if (body is not null)
             req.Content = JsonContent.Create(body, options: JsonConfig.Options);
         return await _client.SendAsync(req);
@@ -163,6 +165,74 @@ public class HttpTests : IAsyncLifetime
         Assert.NotNull(list);
         Assert.Equal(2, list.Total);
         Assert.Equal(2, list.Instances.Count);
+    }
+
+    [Fact]
+    public async Task HttpClaimUnclaimGroupTask()
+    {
+        var w = await DoJson(HttpMethod.Post, "/v1/processes/start", "alice", new
+        {
+            processKey = "purchase",
+            initiator = "alice",
+        });
+        var started = await w.Content.ReadFromJsonAsync<StartResult>(JsonConfig.Options);
+
+        w = await DoJson(HttpMethod.Post, "/v1/referrals", "alice", new
+        {
+            definitionKey = started!.DefinitionKey,
+            parentInstanceId = started.InstanceId,
+            to = new { kind = "group", id = "legal" },
+        });
+        Assert.Equal(HttpStatusCode.Created, w.StatusCode);
+        var refer = await w.Content.ReadFromJsonAsync<ReferResult>(JsonConfig.Options);
+        Assert.NotNull(refer?.Task);
+        Assert.Equal(AssigneeKind.Group, refer.Task.AssigneeKind);
+
+        w = await DoJson(HttpMethod.Post, $"/v1/tasks/{refer.Task.Id}/complete", "bob", new { note = "nope" });
+        Assert.Equal(HttpStatusCode.BadRequest, w.StatusCode);
+
+        w = await DoJson(HttpMethod.Post, $"/v1/tasks/{refer.Task.Id}/claim", "bob", new { from = "bob" });
+        Assert.Equal(HttpStatusCode.OK, w.StatusCode);
+        var claimed = await w.Content.ReadFromJsonAsync<WorkflowTask>(JsonConfig.Options);
+        Assert.Equal(TaskStatus.Claimed, claimed!.Status);
+        Assert.Equal("bob", claimed.ClaimedBy);
+
+        w = await DoJson(HttpMethod.Post, $"/v1/tasks/{refer.Task.Id}/claim", "cara", new { from = "cara" });
+        Assert.Equal(HttpStatusCode.Conflict, w.StatusCode);
+
+        w = await DoJson(HttpMethod.Get, "/v1/tasks?user=cara", "cara", null);
+        var caraInbox = await w.Content.ReadFromJsonAsync<List<WorkflowTask>>(JsonConfig.Options);
+        Assert.Empty(caraInbox!);
+
+        w = await DoJson(HttpMethod.Post, $"/v1/tasks/{refer.Task.Id}/unclaim", "bob", new { from = "bob" });
+        Assert.Equal(HttpStatusCode.OK, w.StatusCode);
+
+        w = await DoJson(HttpMethod.Get, "/v1/tasks?group=legal", "alice", null);
+        var groupInbox = await w.Content.ReadFromJsonAsync<List<WorkflowTask>>(JsonConfig.Options);
+        Assert.Single(groupInbox!);
+        Assert.Equal(TaskStatus.Open, groupInbox[0].Status);
+    }
+
+    [Fact]
+    public async Task HttpTenantIsolation()
+    {
+        var w = await DoJson(HttpMethod.Post, "/v1/processes/start", "alice", new
+        {
+            processKey = "purchase",
+            initiator = "alice",
+        }, tenant: "acme");
+        Assert.Equal(HttpStatusCode.Created, w.StatusCode);
+        var started = await w.Content.ReadFromJsonAsync<StartResult>(JsonConfig.Options);
+
+        w = await DoJson(HttpMethod.Get, $"/v1/instances/{started!.InstanceId}", "alice", null, tenant: "other");
+        Assert.Equal(HttpStatusCode.Forbidden, w.StatusCode);
+
+        w = await DoJson(HttpMethod.Get, "/v1/processes/purchase/instances", "alice", null, tenant: "other");
+        var list = await w.Content.ReadFromJsonAsync<ProcessList>(JsonConfig.Options);
+        Assert.Equal(0, list!.Total);
+
+        w = await DoJson(HttpMethod.Get, $"/v1/instances/{started.InstanceId}", "alice", null, tenant: "acme");
+        Assert.Equal(HttpStatusCode.OK, w.StatusCode);
     }
 
     [Fact]

@@ -349,15 +349,23 @@ public sealed class Engine
             throw EngineException.Invalid("actor is required");
         var task = await GetTask(taskId, cancellationToken);
         await CanAct(task, actor, cancellationToken);
-        if (task.Status == TaskStatus.Claimed)
-            throw EngineException.AlreadyClaimed();
         var now = Now();
-        return await _store.TransitionTask(taskId, [TaskStatus.Open], t =>
+        try
         {
-            t.Status = TaskStatus.Claimed;
-            t.ClaimedBy = actor;
-            t.UpdatedAt = now;
-        }, cancellationToken);
+            return await _store.TransitionTask(taskId, [TaskStatus.Open], t =>
+            {
+                t.Status = TaskStatus.Claimed;
+                t.ClaimedBy = actor;
+                t.UpdatedAt = now;
+            }, cancellationToken);
+        }
+        catch (EngineException ex) when (ex.Kind == EngineErrorKind.NotOpen)
+        {
+            var current = await GetTask(taskId, cancellationToken);
+            if (current.Status == TaskStatus.Claimed)
+                throw EngineException.AlreadyClaimed();
+            throw;
+        }
     }
 
     public async Task<WorkflowTask> UnclaimTask(string taskId, string actor, CancellationToken cancellationToken = default)
