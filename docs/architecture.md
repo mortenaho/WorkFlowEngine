@@ -74,7 +74,7 @@ dotnet run --project src/WorkflowEngine.Server
 | `WF_GROUP_<id>` | — | اعضای گروه با شناسهٔ `id` |
 | `WF_API_KEYS` | در Development اختیاری | کلید مشترک درگاه؛ خارج از Development بدون آن فرآیند شروع نمی‌شود |
 
-شناسایی کاربر در درخواست‌های REST از طریق هدر `X-Actor-Id` انجام می‌گیرد. این هدر جایگزین لاگین نیست. قفل ورودی API در پروداکشن با `WF_API_KEYS` است (هدر `X-API-Key`).
+شناسایی کاربر در درخواست‌های REST از طریق هدر `X-Actor-Id` انجام می‌گیرد. این هدر جایگزین لاگین نیست. قفل ورودی API در پروداکشن با `WF_API_KEYS` است (هدر `X-API-Key`). جزئیات استقرار و جلوگیری از لو رفتن کلید: [بخش ۶](#api-key-architecture).
 
 ---
 
@@ -199,5 +199,92 @@ erDiagram
 ## ۵. مدیریت همزمانی و تراکنش‌ها
 
 متد `TransitionTask` در پیاده‌سازی Postgres از دستور `SELECT ... FOR UPDATE` درون یک تراکنش مجزا بهره می‌برد. بدین ترتیب در صورتی که دو درخواست هم‌زمان برای تکمیل یک تسک ارسال شوند، یکی از آن‌ها موفق بوده و دیگری با خطای `NotOpen` مواجه خواهد شد.
+
+---
+
+<a id="api-key-architecture"></a>
+
+## ۶. معماری پیشنهادی استقرار: React، بک‌اند و کلید API
+
+انجین صفحهٔ لاگین ندارد و توکن کاربر صادر نمی‌کند. دو مقدار جدا وجود دارد:
+
+| مقدار | چیست | کجا نگه داشته شود |
+|--------|------|-------------------|
+| `WF_API_KEYS` / هدر `X-API-Key` | راز مشترک **سرویس**؛ ثابت است و مال یک کاربر نیست | فقط روی سرور (بک‌اند / BFF / Gateway) |
+| `X-Actor-Id` | شناسهٔ کاربری که عمل را انجام می‌دهد (مثلاً `mortenaho`) | بک‌اند آن را از **جلسهٔ لاگین اپ شما** می‌گذارد، نه از چیزی که React ادعا کند |
+
+اگر React کلید را در `fetch` بگذارد، در DevTools → Network برای هر کسی که مرورگر را باز کند دیده می‌شود. بنابراین فرانت **هرگز** نباید به پورت انجین وصل شود و **هرگز** نباید `X-API-Key` بفرستد.
+
+### معماری نادرست (کلید لو می‌رود)
+
+<div dir="ltr">
+
+```mermaid
+flowchart LR
+  react[React در مرورگر]
+  engine[Workflow Engine :8081]
+  react -->|"fetch + X-API-Key"| engine
+```
+
+</div>
+
+مسیر اشتباه: مرورگر ← اینترنت ← انجین. هدر درخواست در Network تب مرورگر قابل خواندن است؛ هر اسکریپت مخرب روی همان صفحه هم به کلید دسترسی دارد.
+
+### معماری درست (BFF)
+
+مرورگر فقط با **API خودتان** حرف می‌زند (همان دامنه‌ای که لاگین اپ روی آن است). بک‌اند بعد از تشخیص کاربر، از شبکهٔ داخلی به انجین می‌زند.
+
+<div dir="ltr">
+
+```mermaid
+sequenceDiagram
+  actor User
+  participant React
+  participant BFF as بک‌اند اپ شما
+  participant Engine as Workflow Engine
+
+  User->>React: باز کردن کارتابل
+  React->>BFF: GET /api/inbox
+  Note over React,BFF: فقط کوکی یا JWT اپ شما<br/>کلید انجین در مرورگر نیست
+  BFF->>BFF: جلسه معتبر است → userId = mortenaho
+  BFF->>Engine: GET /v1/tasks?user=mortenaho
+  Note over BFF,Engine: X-API-Key از env سرور<br/>X-Actor-Id از جلسه نه از React
+  Engine-->>BFF: فهرست تسک‌ها
+  BFF-->>React: JSON کارتابل
+```
+
+</div>
+
+<div dir="ltr">
+
+```mermaid
+flowchart TB
+  subgraph internet [اینترنت]
+    browser[مرورگر / React]
+  end
+  subgraph edge [لبهٔ عمومی]
+    proxy[Reverse Proxy]
+    app[بک‌اند / BFF]
+  end
+  subgraph private [شبکهٔ داخلی]
+    engine[Workflow Engine]
+    db[(Postgres)]
+  end
+  browser -->|"HTTPS، جلسهٔ اپ"| proxy --> app
+  app -->|"X-API-Key فقط همین‌جا"| engine
+  engine --> db
+```
+
+</div>
+
+### قواعد استقرار
+
+۱. پورت انجین (`8081` / داخل Docker `8080`) را روی اینترنت publish نکنید؛ فقط سرویس بک‌اند در شبکهٔ داخلی به آن وصل شود. انتشار پورت در `docker-compose` برای توسعهٔ محلی است، نه پروداکشن.  
+۲. `WF_API_KEYS` فقط در env سرور (یا Secret منیجر) باشد؛ در کد React، `.env` فرانت، و Git نرود. فایل `.env` این مخزن ignore شده است.  
+۳. بک‌اند `X-Actor-Id` را از هویت لاگین‌شده می‌سازد و فیلدهایی مثل `from` / `initiator` را از بدنهٔ درخواست مرورگر برای جعل هویت قبول نمی‌کند.  
+۴. ارتباط مرورگر با بک‌اند روی HTTPS باشد. ارتباط بک‌اند با انجین روی شبکهٔ خصوصی بماند.  
+۵. خارج از `Development` بدون `WF_API_KEYS` سرویس انجین بالا نمی‌آید تا API باز روی شبکه نماند.
+
+نمونهٔ فراخوانی از React و لایهٔ میانی در [usage.md](usage.md#react-bff) آمده است.
 
 </div>

@@ -14,7 +14,7 @@ dotnet run --project src/WorkflowEngine.Server
 
 مستندات Swagger: [http://127.0.0.1:8081/swagger](http://127.0.0.1:8081/swagger)
 
-شناسایی کاربر در تمام درخواست‌ها از طریق هدر `X-Actor-Id` انجام می‌شود. این هدر لاگین نیست؛ در پروداکشن سرویس بدون `WF_API_KEYS` اصلاً بالا نمی‌آید و کلاینت باید کلید را با `X-API-Key` بفرستد.
+شناسایی کاربر با هدر `X-Actor-Id` است (لاگین داخل انجین وجود ندارد). در پروداکشن بدون `WF_API_KEYS` سرویس بالا نمی‌آید. این کلید را **React در مرورگر نفرستید**؛ فقط بک‌اند شما (BFF) از env آن را به‌صورت `X-API-Key` به انجین می‌دهد. جزئیات و دیاگرام: [docs/architecture.md](docs/architecture.md#api-key-architecture).
 
 <div dir="ltr">
 
@@ -67,7 +67,7 @@ curl -s -X POST http://127.0.0.1:8081/v1/referrals \
 <div dir="ltr">
 
 ```bash
-curl -s 'http://127.0.0.1:8081/v1/tasks?user=bob'
+curl -s 'http://127.0.0.1:8081/v1/tasks?user=mortenaho'
 curl -s 'http://127.0.0.1:8081/v1/tasks?group=legal'
 ```
 
@@ -139,8 +139,10 @@ docker compose up --build
 | `DATABASE_URL` | خالی | اتصال به Postgres (در صورت خالی بودن، از ذخیره‌ساز حافظه‌ای استفاده می‌شود) |
 | `WF_USERS` | خالی | فهرست کاربران دایرکتوری ایستا |
 | `WF_GROUP_<id>` | — | اعضای گروه `id` (مثال: `WF_GROUP_legal=bob,cara`) |
-| `WF_API_KEYS` | در Development خالی؛ در پروداکشن اجباری | کلید مشترک سرویس (نه توکن لاگین کاربر). با هدر `X-API-Key` یا `Authorization: Bearer` ارسال شود. بدون آن در غیر از Development فرایند شروع نمی‌شود. |
+| `WF_API_KEYS` | در Development خالی؛ در پروداکشن اجباری | کلید مشترک سرویس (نه توکن لاگین کاربر). فقط بک‌اند/Gateway با هدر `X-API-Key` یا `Authorization: Bearer` بفرستد — نه React. بدون آن در غیر از Development فرایند شروع نمی‌شود. |
 
-راهنمای جامع: [docs/usage.md](docs/usage.md) · مستندات پایگاه داده: [docs/database.md](docs/database.md)
+**معماری پیشنهادی با فرانت React:** مرورگر → API اپ شما (جلسه/کوکی) → انجین روی شبکهٔ داخلی با `X-API-Key`. اگر `fetch` مستقیم از React به پورت `8081` کلید را در هدر بگذارد، در Network مرورگر لو می‌رود.
+
+راهنمای جامع: [docs/usage.md](docs/usage.md) · معماری کلید و BFF: [docs/architecture.md](docs/architecture.md#api-key-architecture) · پایگاه داده: [docs/database.md](docs/database.md)
 
 </div>

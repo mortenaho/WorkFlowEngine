@@ -26,7 +26,7 @@ dotnet run --project src/WorkflowEngine.Server
 | شروع فرایند | `POST /v1/processes/start` با بدنهٔ `{ "processKey", "initiator", "parameters?" }` |
 | لیست اجراها | `GET /v1/processes/{processKey}/instances` |
 | ارجاع کار | `POST /v1/referrals` با بدنهٔ `{ "definitionKey", "parentInstanceId?", "to" }` |
-| کارتابل وظایف | `GET /v1/tasks?user=bob` یا `GET /v1/tasks?group=legal` |
+| کارتابل وظایف | `GET /v1/tasks?user=mortenaho` یا `GET /v1/tasks?group=legal` |
 | تحویل گرفتن تسک (Claim) | `POST /v1/tasks/{id}/claim` |
 | لغو تحویل تسک (Unclaim) | `POST /v1/tasks/{id}/unclaim` |
 | وضعیت تکمیل چندنفره | `GET /v1/instances/{id}/completion` |
@@ -274,6 +274,45 @@ var engine = new Engine(store, directory);
 - `X-Tenant-Id`: شناسهٔ سازمان جهت جداسازی داده‌ها (اختیاری؛ پیش‌فرض: `default`).
 - `X-API-Key`: کلید مشترک سرویس برای بک‌اند یا API Gateway. در پروداکشن اجباری است (متغیر `WF_API_KEYS`). مسیرهای `/health` و مستندات مستثنی هستند.
 
+<a id="react-bff"></a>
+
+### اتصال از React: کلید را در مرورگر نفرستید
+
+`X-API-Key` برای `curl`، تست، و **بک‌اند شما** است، نه برای `fetch` در React. اگر فرانت کلید را در هدر بگذارد، در Network مرورگر لو می‌رود. معماری پیشنهادی و دیاگرام‌ها: [architecture.md — بخش ۶](architecture.md#api-key-architecture).
+
+**React (فقط API خودتان، بدون کلید انجین):**
+
+<div dir="ltr">
+
+```js
+// اشتباه: fetch('http://engine:8081/v1/tasks?user=mortenaho', { headers: { 'X-API-Key': '...' } })
+await fetch("/api/inbox", { credentials: "include" });
+```
+
+</div>
+
+**بک‌اند / BFF (این‌جا کلید از env خوانده می‌شود):**
+
+<div dir="ltr">
+
+```js
+// مثال Express؛ معادل آن در ASP.NET / Nest یکسان است
+app.get("/api/inbox", async (req, res) => {
+  const userId = req.session.userId; // از لاگین اپ شما، نه از query مرورگر
+  const r = await fetch(`${process.env.WF_ENGINE_URL}/v1/tasks?user=${encodeURIComponent(userId)}`, {
+    headers: {
+      "X-API-Key": process.env.WF_API_KEYS.split(",")[0],
+      "X-Actor-Id": userId,
+    },
+  });
+  res.status(r.status).json(await r.json());
+});
+```
+
+</div>
+
+فلو خلاصه: کاربر در اپ شما لاگین می‌کند → React به `/api/...` همان اپ درخواست می‌زند → بک‌اند جلسه را چک می‌کند → با `X-API-Key` و `X-Actor-Id` به انجین می‌زند → پاسخ را به React برمی‌گرداند.
+
 ### ۱. شروع فرایند (Start)
 
 <div dir="ltr">
@@ -353,7 +392,7 @@ POST /v1/referrals
 
 ### ۳. کارتابل وظایف (Tasks)
 
-- `GET /v1/tasks?user=bob` — دریافت وظایف شخصی کاربر `bob` به‌همراه وظایف گروه‌هایی که وی در آن‌ها عضویت دارد.
+- `GET /v1/tasks?user=mortenaho` — دریافت وظایف شخصی کاربر `mortenaho` به‌همراه وظایف گروه‌هایی که وی در آن‌ها عضویت دارد.
 - `GET /v1/tasks?group=legal` — صرفاً وظایف ارجاع‌شده به گروه `legal`.
 
 هر تسک دارای مشخصه‌های `assigneeKind` و `assigneeId` است تا مالکیت آن مشخص باشد.
@@ -447,7 +486,7 @@ GET /v1/instances/{referralInstanceId}/completion
 
 ## ۴. پیکربندی محیط و Docker
 
-اگر `ASPNETCORE_ENVIRONMENT` برابر `Development` نباشد و `WF_API_KEYS` خالی باشد، سرویس هنگام شروع متوقف می‌شود. این کلید توکن لاگین کاربر نیست؛ یک راز مشترک است که برنامهٔ شما (یا Gateway) با هر درخواست می‌فرستد. کاربر نهایی به خودِ انجین لاگین نمی‌کند.
+اگر `ASPNETCORE_ENVIRONMENT` برابر `Development` نباشد و `WF_API_KEYS` خالی باشد، سرویس هنگام شروع متوقف می‌شود. این کلید توکن لاگین کاربر نیست؛ یک راز مشترک است که **فقط برنامهٔ شما (یا Gateway)** با هر درخواست می‌فرستد. کاربر نهایی و React به خودِ انجین لاگین نمی‌کنند و کلید را نمی‌بینند. نمونهٔ `curl` زیر برای تست از سرور/ترمینال است، نه برای کپی در فرانت.
 
 <div dir="ltr">
 
