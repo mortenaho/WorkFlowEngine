@@ -55,7 +55,7 @@ curl -s http://127.0.0.1:8081/v1/processes/employeeTermination/instances
 ```bash
 curl -s -X POST http://127.0.0.1:8081/v1/referrals \
   -H 'Content-Type: application/json' -H 'X-Actor-Id: alice' \
-  -d '{"definitionKey":"purchase","parentInstanceId":"INSTANCE","from":"alice","title":"بررسی","to":{"kind":"user","id":"mortenaho"}}'
+  -d '{"definitionKey":"purchase","parentInstanceId":"INSTANCE","from":"alice","title":"Review","to":{"kind":"user","id":"mortenaho"}}'
 ```
 
 </div>
@@ -104,7 +104,7 @@ curl -s http://127.0.0.1:8081/v1/instances/REFERRAL_INSTANCE/completion
 ```bash
 curl -s -X POST http://127.0.0.1:8081/v1/tasks/TASK_ID/complete-and-end \
   -H 'Content-Type: application/json' -H 'X-Actor-Id: mortenaho' \
-  -d '{"note":"پرونده بسته شد"}'
+  -d '{"note":"Case closed"}'
 ```
 
 </div>

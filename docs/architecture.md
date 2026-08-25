@@ -16,24 +16,24 @@
 WorkFlowEngine/
 ├── src/
 │   ├── WorkflowEngine.Domain/
-│   │   ├── Entities/          # Definition, ProcessInstance, WorkflowTask
-│   │   ├── ValueObjects/      # AssigneeKind, TaskStatus, InstanceStatus, ProcessState
-│   │   ├── Common/            # Tenant, Vars, Ids
-│   │   └── Errors/            # EngineException, EngineErrorKind
+│   │   ├── Entities/
+│   │   ├── ValueObjects/
+│   │   ├── Common/
+│   │   └── Errors/
 │   ├── WorkflowEngine.Application/
-│   │   ├── Engine.cs          # قوانین و منطق کسب‌وکار (شروع / ارجاع / تکمیل)
-│   │   ├── Ports/             # رابط‌ها (IStore, IDirectory, ITenantProvider)
-│   │   ├── Tenancy/           # TenantContext
-│   │   └── Results/           # نتایج متدها (StartResult, ReferResult, Completion, ...)
+│   │   ├── Engine.cs
+│   │   ├── Ports/
+│   │   ├── Tenancy/
+│   │   └── Results/
 │   ├── WorkflowEngine.Infrastructure/
-│   │   ├── Persistence/       # ذخیره‌سازی داده‌ها (MemoryStore, PostgresStore)
-│   │   └── Identity/          # دایرکتوری (OpenDirectory پیش‌فرض، StaticDirectory)
+│   │   ├── Persistence/
+│   │   └── Identity/
 │   └── WorkflowEngine.Server/
-│       ├── Program.cs         # ریشهٔ ترکیب وابستگی‌ها (Composition Root)
-│       ├── Controllers/       # کنترلرهای وب REST
-│       ├── Http/              # میان‌افزارها، پیکربندی JSON و نگاشت خطاها
-│       ├── Requests/          # مدل‌های بدنهٔ درخواست ورودی
-│       └── Contracts/         # DTOهای خروجی و ApiMapper
+│       ├── Program.cs
+│       ├── Controllers/
+│       ├── Http/
+│       ├── Requests/
+│       └── Contracts/
 ├── tests/WorkflowEngine.Tests/
 ├── examples/
 └── docs/
@@ -41,15 +41,35 @@ WorkFlowEngine/
 
 </div>
 
+| مسیر | نقش |
+|------|-----|
+| `Domain/Entities` | موجودیت‌ها: Definition، ProcessInstance، WorkflowTask |
+| `Domain/ValueObjects` | AssigneeKind، TaskStatus، InstanceStatus، ProcessState |
+| `Domain/Common` | Tenant، Vars، Ids |
+| `Domain/Errors` | EngineException، EngineErrorKind |
+| `Application/Engine.cs` | قوانین کسب‌وکار: شروع، ارجاع، تکمیل |
+| `Application/Ports` | رابط‌ها: IStore، IDirectory، ITenantProvider |
+| `Infrastructure/Persistence` | MemoryStore، PostgresStore |
+| `Infrastructure/Identity` | OpenDirectory (پیش‌فرض)، StaticDirectory |
+| `Server/Program.cs` | Composition Root — ترکیب وابستگی‌ها |
+| `Server/Controllers` | کنترلرهای REST |
+| `Server/Http` | میان‌افزارها، JSON، نگاشت خطا |
+| `Server/Requests` | مدل‌های بدنهٔ درخواست |
+| `Server/Contracts` | DTOهای خروجی و ApiMapper |
+
+جهت وابستگی لایه‌ها:
+
 <div dir="ltr">
 
 ```
 Domain  ←  Application  ←  Infrastructure
                       ←  Server (API)
-Server.Program         →  ایجاد وابستگی‌های Store / Directory / Engine
+Server.Program         →  wires Store / Directory / Engine
 ```
 
 </div>
+
+`Program.cs` پیاده‌سازی Store و Directory را می‌سازد و Engine را راه‌اندازی می‌کند.
 
 | پروژه | نقش و مسئولیت | لایه‌های مجاز جهت وابستگی |
 |------|----------------|--------------------------|
@@ -90,15 +110,17 @@ dotnet run --project src/WorkflowEngine.Server
 flowchart LR
   start[Start processKey + initiator]
   start --> def[definitionKey]
-  start --> root[instanceId ریشه]
+  start --> root[root instanceId]
   root --> refer[Refer + definitionKey]
-  refer --> child[instanceId جدید]
-  refer --> tasks[Task شخص یا گروه]
-  tasks --> inbox[کارتابل وظایف]
+  refer --> child[child instanceId]
+  refer --> tasks[user or group Task]
+  tasks --> inbox[task inbox]
   tasks --> done[Completion allCompleted]
 ```
 
 </div>
+
+از `Start` یک اینستنس ریشه و `definitionKey` ساخته می‌شود. هر `Refer` یک اینستنس فرزند و تسک(های) کارتابل ایجاد می‌کند.
 
 | سطح | مفهوم و نقش |
 |------|-------------|
@@ -225,14 +247,14 @@ erDiagram
 
 ```mermaid
 flowchart LR
-  react[React در مرورگر]
+  react[React browser]
   engine[Workflow Engine :8081]
   react -->|"fetch + X-API-Key"| engine
 ```
 
 </div>
 
-مسیر اشتباه: مرورگر ← اینترنت ← انجین. هدر درخواست در Network تب مرورگر قابل خواندن است؛ هر اسکریپت مخرب روی همان صفحه هم به کلید دسترسی دارد.
+مسیر اشتباه: مرورگر ← اینترنت ← انجین. هدر درخواست در Network تب مرورگر قابل خواندن است؛ هر اسکریپت مخربی روی همان صفحه هم به کلید دسترسی دارد.
 
 ### معماری درست (BFF)
 
@@ -244,17 +266,17 @@ flowchart LR
 sequenceDiagram
   actor User
   participant React
-  participant BFF as بک‌اند اپ شما
+  participant BFF as Your backend
   participant Engine as Workflow Engine
 
-  User->>React: باز کردن کارتابل
+  User->>React: open inbox
   React->>BFF: GET /api/inbox
-  Note over React,BFF: فقط کوکی یا JWT اپ شما<br/>کلید انجین در مرورگر نیست
-  BFF->>BFF: جلسه معتبر است → userId = mortenaho
+  Note over React,BFF: app session only<br/>engine key not in browser
+  BFF->>BFF: valid session → userId = mortenaho
   BFF->>Engine: GET /v1/tasks?user=mortenaho
-  Note over BFF,Engine: X-API-Key از env سرور<br/>X-Actor-Id از جلسه نه از React
-  Engine-->>BFF: فهرست تسک‌ها
-  BFF-->>React: JSON کارتابل
+  Note over BFF,Engine: X-API-Key from server env<br/>X-Actor-Id from session
+  Engine-->>BFF: task list
+  BFF-->>React: inbox JSON
 ```
 
 </div>
@@ -263,19 +285,19 @@ sequenceDiagram
 
 ```mermaid
 flowchart TB
-  subgraph internet [اینترنت]
-    browser[مرورگر / React]
+  subgraph internet [Internet]
+    browser[Browser / React]
   end
-  subgraph edge [لبهٔ عمومی]
+  subgraph edge [Public edge]
     proxy[Reverse Proxy]
-    app[بک‌اند / BFF]
+    app[Backend / BFF]
   end
-  subgraph private [شبکهٔ داخلی]
+  subgraph private [Private network]
     engine[Workflow Engine]
     db[(Postgres)]
   end
-  browser -->|"HTTPS، جلسهٔ اپ"| proxy --> app
-  app -->|"X-API-Key فقط همین‌جا"| engine
+  browser -->|"HTTPS, app session"| proxy --> app
+  app -->|"X-API-Key server-side only"| engine
   engine --> db
 ```
 

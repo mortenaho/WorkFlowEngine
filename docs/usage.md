@@ -16,10 +16,11 @@
 
 ```bash
 dotnet run --project src/WorkflowEngine.Server
-# مستندات تعاملی Swagger: http://127.0.0.1:8081/swagger
 ```
 
 </div>
+
+مستندات تعاملی Swagger: http://127.0.0.1:8081/swagger
 
 | عملیات | نحوهٔ فراخوانی (REST API) |
 |--------|---------------------------|
@@ -56,6 +57,8 @@ dotnet run --project src/WorkflowEngine.Server
 
 ## ۲. استفاده از طریق SDK در زبان C#‎
 
+### راه‌اندازی دایرکتوری و Engine
+
 <div dir="ltr">
 
 ```csharp
@@ -71,32 +74,70 @@ var dir = new StaticDirectory(
         ["finance"] = ["dan", "cara"],
     });
 var eng = new Engine(new MemoryStore(), dir);
+```
 
-// شروع فرایند
+</div>
+
+### شروع فرایند
+
+خروجی شامل `DefinitionKey` و `InstanceId` است.
+
+<div dir="ltr">
+
+```csharp
 var started = await eng.Start("purchase", "alice", new Dictionary<string, object?> { ["amount"] = 1.5e8 });
-// مقادیر خروجی: started.DefinitionKey, started.InstanceId
+```
 
-// ارجاع به کاربر یا گروه
+</div>
+
+### ارجاع به کاربر یا گروه
+
+`ToKind` می‌تواند `User`، `Group` یا `Users` باشد. برای حالت چندنفره از `ToIds` استفاده کنید. خروجی شامل `InstanceId` و `Task` / `Tasks` است.
+
+<div dir="ltr">
+
+```csharp
 var refer = await eng.Refer("alice", new ReferInput
 {
     DefinitionKey = started.DefinitionKey,
     ParentInstanceId = started.InstanceId,
-    Title = "بررسی حقوقی",
-    ToKind = AssigneeKind.User, // یا AssigneeKind.Group یا AssigneeKind.Users
+    Title = "Legal review",
+    ToKind = AssigneeKind.User,
     ToId = "mortenaho",
-    // ToIds = ["mortenaho", "cara"], // در صورت انتخاب AssigneeKind.Users
+    // ToIds = ["mortenaho", "cara"],  // AssigneeKind.Users
 });
-// مقادیر خروجی: refer.InstanceId, refer.Task / refer.Tasks
+```
 
-// دریافت وظایف کارتابل
+</div>
+
+### کارتابل وظایف
+
+<div dir="ltr">
+
+```csharp
 var inbox = await eng.PendingTasks("mortenaho", "");
 var groupInbox = await eng.PendingTasks("", "legal");
+```
 
-// تکمیل و بستن کل پرونده
-var ended = await eng.CompleteAndEnd(refer.Task!.Id, "mortenaho", "پرونده بسته شد");
-_ = ended.Process.Status; // برابر با completed
+</div>
 
-// دریافت آمار و وضعیت فرایندهای کاربر
+### تکمیل و بستن کل پرونده
+
+پس از فراخوانی، `ended.Process.Status` برابر `completed` خواهد بود.
+
+<div dir="ltr">
+
+```csharp
+var ended = await eng.CompleteAndEnd(refer.Task!.Id, "mortenaho", "Case closed");
+```
+
+</div>
+
+### فرایندهای کاربر
+
+<div dir="ltr">
+
+```csharp
 var mine = await eng.ListUserProcesses("alice");
 var open = await eng.ListUserProcesses("alice", "open");
 ```
@@ -270,21 +311,36 @@ public sealed class ActiveDirectoryService : IDirectory
 
 برای جایگزینی `StaticDirectory` با پیاده‌سازی سازمانی در ریشهٔ برنامه (`Program.cs`):
 
+**ثبت `HttpIdentityDirectory` با HttpClient و کش:**
+
 <div dir="ltr">
 
 ```csharp
-// نمونه با تزریق وابستگی HttpClient و IMemoryCache:
 builder.Services.AddMemoryCache();
 builder.Services.AddHttpClient<IDirectory, HttpIdentityDirectory>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Identity:BaseUrl"] ?? "https://iam.company.local");
     client.DefaultRequestHeaders.Add("Authorization", $"Bearer {builder.Configuration["Identity:ApiKey"]}");
 });
+```
 
-// یا در صورت نمونه‌سازی مستقیم ActiveDirectory:
-// IDirectory directory = new ActiveDirectoryService("corp.company.local", "DC=corp,DC=company,DC=local");
+</div>
 
-// دریافت دایرکتوری و راه‌اندازی Engine:
+**جایگزینی با Active Directory (اختیاری):**
+
+<div dir="ltr">
+
+```csharp
+IDirectory directory = new ActiveDirectoryService("corp.company.local", "DC=corp,DC=company,DC=local");
+```
+
+</div>
+
+**راه‌اندازی Engine با دایرکتوری تزریق‌شده:**
+
+<div dir="ltr">
+
+```csharp
 var directory = app.Services.GetRequiredService<IDirectory>();
 var engine = new Engine(store, directory);
 ```
@@ -309,10 +365,11 @@ var engine = new Engine(store, directory);
 
 **React (فقط API خودتان، بدون کلید انجین):**
 
+فراخوانی مستقیم انجین از مرورگر با `X-API-Key` اشتباه است — کلید در Network لو می‌رود.
+
 <div dir="ltr">
 
 ```js
-// اشتباه: fetch('http://engine:8081/v1/tasks?user=mortenaho', { headers: { 'X-API-Key': '...' } })
 await fetch("/api/inbox", { credentials: "include" });
 ```
 
@@ -320,12 +377,13 @@ await fetch("/api/inbox", { credentials: "include" });
 
 **بک‌اند / BFF (این‌جا کلید از env خوانده می‌شود):**
 
+`userId` از جلسهٔ لاگین اپ شما می‌آید، نه از query مرورگر. نمونهٔ Express؛ معادل آن در ASP.NET / Nest یکسان است.
+
 <div dir="ltr">
 
 ```js
-// مثال Express؛ معادل آن در ASP.NET / Nest یکسان است
 app.get("/api/inbox", async (req, res) => {
-  const userId = req.session.userId; // از لاگین اپ شما، نه از query مرورگر
+  const userId = req.session.userId;
   const r = await fetch(`${process.env.WF_ENGINE_URL}/v1/tasks?user=${encodeURIComponent(userId)}`, {
     headers: {
       "X-API-Key": process.env.WF_API_KEYS.split(",")[0],
@@ -392,15 +450,17 @@ GET /v1/processes/employeeTermination/instances
 
 ### ۲. ارجاع کار (Referral)
 
+`parentInstanceId` همان `instanceId` دریافتی از پاسخ Start است.
+
 <div dir="ltr">
 
 ```json
 POST /v1/referrals
 {
   "definitionKey": "purchase",
-  "parentInstanceId": "<شناسه instance دریافتی از start>",
+  "parentInstanceId": "<instanceId from start>",
   "from": "alice",
-  "title": "بررسی",
+  "title": "Review",
   "to": { "kind": "user", "id": "mortenaho" }
 }
 

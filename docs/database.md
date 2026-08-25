@@ -71,17 +71,24 @@ DATABASE_URL=postgres://workflow:workflow@postgres:5432/workflow?sslmode=disable
 
 ## ۳. مدل مفهومی و روابط موجودیت‌ها
 
+سلسله‌مراتب داده از سازمان تا وظیفه:
+
 <div dir="ltr">
 
 ```
-سازمان (tenant_id)
-  └── definition          (یک نوع فرایند؛ مثلاً purchase)
-        └── instance ریشه  (خروجی متد Start با parent_instance_id = '')
-              └── instance فرزند  (هر عملیات Refer یک ردیف جدید)
-                    └── task(ها)  (وظایف کارتابل user یا group)
+tenant (tenant_id)
+  └── definition
+        └── root instance       parent_instance_id = ''
+              └── child instance   one row per Refer
+                    └── task(s)      inbox assignee: user or group
 ```
 
 </div>
+
+- `definition`: نوع فرایند (مثلاً `purchase`)
+- `root instance`: خروجی متد `Start`
+- `child instance`: هر عملیات `Refer` یک ردیف جدید
+- `task`: وظیفهٔ کارتابل برای کاربر یا گروه
 
 **قواعد ساختاری مهم:**
 
@@ -317,14 +324,13 @@ ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name;
 
 ## ۱۰. مدیریت همزمانی در پایگاه داده
 
-عملیات تغییر وضعیت تسک‌ها (شامل تکمیل، رزرو و لغو رزرو) از طریق متد `TransitionTask` انجام می‌شود:
+عملیات تغییر وضعیت تسک‌ها (شامل تکمیل، رزرو و لغو رزرو) از طریق متد `TransitionTask` انجام می‌شود. اگر وضعیت فعلی با وضعیت‌های مجاز مطابقت نداشته باشد، خطای `NotOpen` برگردانده می‌شود.
 
 <div dir="ltr">
 
 ```sql
 BEGIN;
 SELECT id, status, ... FROM tasks WHERE id = $1 FOR UPDATE;
--- در صورت عدم تطابق وضعیت فعلی با وضعیت‌های مجاز، خطای NotOpen بازگردانده می‌شود
 UPDATE tasks SET status = $2, note = $3, updated_at = $4, completed_at = $5, claimed_by = $6 WHERE id = $1;
 COMMIT;
 ```
@@ -387,17 +393,25 @@ COMMIT;
 
 کوئری‌های کاربردی برای پایش عملیاتی:
 
+**نمونه‌های اجرای ریشه برای یک نوع فرایند:**
+
 <div dir="ltr">
 
 ```sql
--- دریافت نمونه‌های اجرای ریشه برای یک نوع فرایند مشخص
 SELECT id, status, started_by, created_at
 FROM instances
 WHERE tenant_id = 'default'
   AND definition_key = 'purchase'
   AND parent_instance_id = '';
+```
 
--- دریافت وظایف باز یک کاربر (شامل وظایف فردی و وظایف رزروشده)
+</div>
+
+**وظایف باز یک کاربر (فردی و رزروشده):**
+
+<div dir="ltr">
+
+```sql
 SELECT id, title, status, assignee_kind, assignee_id
 FROM tasks
 WHERE tenant_id = 'default'
@@ -406,8 +420,15 @@ WHERE tenant_id = 'default'
     (assignee_kind = 'user' AND assignee_id = 'mortenaho')
     OR claimed_by = 'mortenaho'
   );
+```
 
--- مشاهدهٔ ساختار درختی یک فرایند (ریشه و تمام ارجاع‌های فرزند)
+</div>
+
+**ساختار درختی یک فرایند (ریشه و ارجاع‌های فرزند):**
+
+<div dir="ltr">
+
+```sql
 SELECT id, parent_instance_id, status, started_by, created_at
 FROM instances
 WHERE id = :root_id OR parent_instance_id = :root_id;
