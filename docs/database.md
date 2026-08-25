@@ -1,3 +1,5 @@
+<div dir="rtl">
+
 # مستند دیتابیس Workflow Engine
 
 منبع حقیقت اسکیما، کلاس `PostgresStore` در `src/WorkflowEngine.Infrastructure/PostgresStore.cs` است. مهاجرت در اولین اتصال اجرا می‌شود؛ فایل SQL جدا یا ابزار migration خارجی وجود ندارد.
@@ -35,9 +37,13 @@
 
 متغیر محیط:
 
+<div dir="ltr">
+
 ```
 DATABASE_URL=postgres://workflow:workflow@postgres:5432/workflow?sslmode=disable
 ```
+
+</div>
 
 Compose همین مقدار را به سرویس `engine` می‌دهد. کاربر / رمز / دیتابیس پیش‌فرض:
 
@@ -67,6 +73,8 @@ Compose همین مقدار را به سرویس `engine` می‌دهد. کار�
 
 ## ۳. مدل مفهومی
 
+<div dir="ltr">
+
 ```
 tenant
   └── definition          (یک نوع فرایند؛ مثلاً purchase)
@@ -75,12 +83,16 @@ tenant
                     └── task(ها)  (کارتابل user / group)
 ```
 
+</div>
+
 قواعد مهم:
 
 - `Start` تسک نمی‌سازد؛ فقط تعریف (در صورت نبود) و یک اینستنس ریشه می‌سازد.
 - هر `Refer` یک اینستنس **جدید** می‌سازد. اگر `parentInstanceId` داده شود، فرزند به ریشه وصل می‌شود.
 - تسک‌ها به اینستنس **ارجاع** وصل‌اند، نه لزوماً به اینستنس استارت.
 - برای لیست کردن کارتابل یک فرایند ریشه، کوئری تسک‌ها هم `instance_id` و هم `parent_instance_id` را می‌بیند.
+
+<div dir="ltr">
 
 ```mermaid
 erDiagram
@@ -137,6 +149,8 @@ erDiagram
   }
 ```
 
+</div>
+
 **قید خارجی (FOREIGN KEY) در اسکیما تعریف نشده است.** یکپارچگی ارجاعی را لایهٔ Application تضمین می‌کند. حذف آبشاری در دیتابیس وجود ندارد.
 
 ---
@@ -182,11 +196,15 @@ erDiagram
 
 ### نوشتن
 
+<div dir="ltr">
+
 ```sql
 INSERT INTO definitions (id, tenant_id, key, name, version, graph, published, created_at)
 VALUES ($1,$2,$3,$4,1,'{}'::jsonb,TRUE,$5)
 ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name
 ```
+
+</div>
 
 فقط `name` در تداخل به‌روز می‌شود. `Start` اگر تعریفی برای `(tenant_id, key)` نباشد آن را می‌سازد. `Refer` تعریف موجود می‌خواهد؛ وگرنه خطا می‌دهد.
 
@@ -256,9 +274,13 @@ ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name
 
 ### به‌روزرسانی
 
+<div dir="ltr">
+
 ```sql
 UPDATE instances SET status=$2, vars=$3::jsonb, updated_at=$4 WHERE id=$1
 ```
+
+</div>
 
 اگر هیچ ردیفی عوض نشود `NotFound` پرتاب می‌شود. `definition_*` و `started_by` و `parent_instance_id` پس از INSERT عوض نمی‌شوند.
 
@@ -306,6 +328,8 @@ UPDATE instances SET status=$2, vars=$3::jsonb, updated_at=$4 WHERE id=$1
 
 ### وضعیت تسک (`status`)
 
+<div dir="ltr">
+
 ```
         claim                 complete
   open ──────► claimed ──────► done
@@ -314,6 +338,8 @@ UPDATE instances SET status=$2, vars=$3::jsonb, updated_at=$4 WHERE id=$1
 
   open / claimed ──completeAndEnd──► cancelled
 ```
+
+</div>
 
 | مقدار | ثابت | چه زمانی |
 |-------|------|----------|
@@ -390,6 +416,8 @@ PK روی `id` ایندکس B-tree جدا می‌سازد. ایندکس روی `
 
 تکمیل، claim و unclaim از `TransitionTask` می‌گذرند:
 
+<div dir="ltr">
+
 ```sql
 BEGIN;
 SELECT … FROM tasks WHERE id=$1 FOR UPDATE;
@@ -397,6 +425,8 @@ SELECT … FROM tasks WHERE id=$1 FOR UPDATE;
 UPDATE tasks SET status, note, updated_at, completed_at, claimed_by WHERE id=$1;
 COMMIT;
 ```
+
+</div>
 
 `FOR UPDATE` ردیف را تا پایان تراکنش قفل می‌کند. دو complete همزمان روی یک تسک: یکی موفق، دومی `NotOpen`. دو claim همزمان روی تسک گروهی: یکی `claimed`، دومی `AlreadyClaimed`.
 
@@ -504,6 +534,8 @@ Bob و Cara هر دو این تسک را در کارتابل می‌بینند (
 
 همان متنی که `PostgresStore` در مهاجرت اجرا می‌کند:
 
+<div dir="ltr">
+
 ```sql
 CREATE TABLE IF NOT EXISTS definitions (
   id TEXT PRIMARY KEY,
@@ -559,6 +591,8 @@ CREATE INDEX IF NOT EXISTS instances_process_idx ON instances(tenant_id, definit
 CREATE INDEX IF NOT EXISTS instances_initiator_idx ON instances(tenant_id, started_by, parent_instance_id);
 ```
 
+</div>
+
 ---
 
 ## ۱۶. عملیات و نگهداری
@@ -574,6 +608,8 @@ CREATE INDEX IF NOT EXISTS instances_initiator_idx ON instances(tenant_id, start
 | رمز پیش‌فرض Compose | فقط توسعه؛ برای تولید عوض شود |
 
 کوئری‌های مفید عملیاتی:
+
+<div dir="ltr">
 
 ```sql
 -- اجراهای ریشه یک فرایند
@@ -599,6 +635,8 @@ FROM instances
 WHERE id = :root OR parent_instance_id = :root;
 ```
 
+</div>
+
 ---
 
 ## ۱۷. ارتباط با بقیهٔ مستندات
@@ -608,3 +646,5 @@ WHERE id = :root OR parent_instance_id = :root;
 | [architecture.md](architecture.md) | لایه‌ها، سرویس‌ها، همزمانی در سطح موتور |
 | [usage.md](usage.md) | SDK و REST |
 | [README.md](../README.md) | راه‌اندازی سریع |
+
+</div>

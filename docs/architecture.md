@@ -1,3 +1,5 @@
+<div dir="rtl">
+
 # معماری
 
 این انجین گراف BPMN تفسیر نمی‌کند. سرویس‌ها روی یک مدل سادهٔ تعریف / اینستنس / تسک سوار است.
@@ -7,6 +9,8 @@
 ---
 
 ## ۱. ساختار پروژه
+
+<div dir="ltr">
 
 ```
 WorkFlowEngine/
@@ -35,11 +39,17 @@ WorkFlowEngine/
 └── docs/
 ```
 
+</div>
+
+<div dir="ltr">
+
 ```
 Domain  ←  Application  ←  Infrastructure
                       ←  Server (API)
 Server.Program         →  می‌سازد Store/Directory/Engine
 ```
+
+</div>
 
 | پروژه | نقش | اجازه دارد بداند |
 |------|------|------------------|
@@ -48,9 +58,13 @@ Server.Program         →  می‌سازد Store/Directory/Engine
 | `WorkflowEngine.Infrastructure` | Postgres / حافظه / دایرکتوری استاتیک | Application + Domain |
 | `WorkflowEngine.Server` | REST، DTO، Swagger، ترکیب وابستگی‌ها | Application + Infrastructure |
 
+<div dir="ltr">
+
 ```bash
 dotnet run --project src/WorkflowEngine.Server
 ```
+
+</div>
 
 | متغیر | پیش‌فرض | معنی |
 |--------|---------|------|
@@ -65,6 +79,8 @@ dotnet run --project src/WorkflowEngine.Server
 
 ## ۲. مدل مفهومی
 
+<div dir="ltr">
+
 ```mermaid
 flowchart LR
   start[Start processKey + initiator]
@@ -76,6 +92,8 @@ flowchart LR
   tasks --> inbox[کارتابل]
   tasks --> done[Completion allCompleted]
 ```
+
+</div>
 
 | سطح | چیست |
 |------|------|
@@ -92,6 +110,8 @@ flowchart LR
 ## ۳. دیتابیس
 
 اگر `DATABASE_URL` ست باشد `PostgresStore` اسکیما را می‌سازد. شرح کامل جداول، ستون‌ها، ایندکس‌ها و مهاجرت: [database.md](database.md).
+
+<div dir="ltr">
 
 ```mermaid
 erDiagram
@@ -125,6 +145,8 @@ erDiagram
     text status
   }
 ```
+
+</div>
 
 `Start` اگر تعریفی برای `processKey` نباشد آن را می‌سازد. ارجاع بدون تعریف موجود خطا می‌دهد.
 
@@ -176,3 +198,5 @@ erDiagram
 ## ۵. همزمانی
 
 `TransitionTask` در Postgres با `SELECT ... FOR UPDATE` است. دو complete همزمان روی یک تسک یکی `ErrNotOpen` می‌گیرد.
+
+</div>

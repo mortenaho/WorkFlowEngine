@@ -1,3 +1,5 @@
+<div dir="rtl">
+
 # راهنمای استفاده
 
 سرویس‌ها روی یک کرنل:
@@ -8,10 +10,14 @@
 4. کارتابل تسک‌های باز
 5. وضعیت تکمیل همهٔ گیرندگان یک درخواست
 
+<div dir="ltr">
+
 ```bash
 dotnet run --project src/WorkflowEngine.Server
 # Swagger: http://127.0.0.1:8081/swagger
 ```
+
+</div>
 
 | کار | درخواست |
 |-----|---------|
@@ -45,6 +51,8 @@ dotnet run --project src/WorkflowEngine.Server
 ---
 
 ## ۲. SDK
+
+<div dir="ltr">
 
 ```csharp
 using WorkflowEngine.Application;
@@ -84,7 +92,11 @@ var mine = await eng.ListUserProcesses("alice");
 var open = await eng.ListUserProcesses("alice", "open");
 ```
 
+</div>
+
 در پروداکشن `IDirectory` را در Infrastructure روی LDAP / سرویس هویت خود پیاده کنید:
+
+<div dir="ltr">
 
 ```csharp
 public interface IDirectory
@@ -95,6 +107,8 @@ public interface IDirectory
 }
 ```
 
+</div>
+
 ---
 
 ## ۳. REST
@@ -103,6 +117,8 @@ public interface IDirectory
 
 ### شروع
 
+<div dir="ltr">
+
 ```json
 POST /v1/processes/start
 { "processKey": "purchase", "initiator": "alice", "parameters": { "amount": 150000000 } }
@@ -110,13 +126,21 @@ POST /v1/processes/start
 → { "definitionKey": "purchase", "instanceId": "..." }
 ```
 
+</div>
+
 اگر `initiator` خالی باشد از `X-Actor-Id` استفاده می‌شود. اگر تعریف برای `processKey` نباشد، ساخته می‌شود.
 
 یک `processKey` بارها استارت می‌شود. مثلاً `employeeTermination` برای هر کارمند یک اینستنس جدا:
 
+<div dir="ltr">
+
 ```bash
 GET /v1/processes/employeeTermination/instances
 ```
+
+</div>
+
+<div dir="ltr">
 
 ```json
 {
@@ -137,9 +161,13 @@ GET /v1/processes/employeeTermination/instances
 }
 ```
 
+</div>
+
 فقط اجراهای start هستند؛ ارجاع‌های فرزند در `tasks` همان اجرا می‌آیند.
 
 ### ارجاع
+
+<div dir="ltr">
 
 ```json
 POST /v1/referrals
@@ -153,6 +181,8 @@ POST /v1/referrals
 
 → { "instanceId": "...", "definitionKey": "purchase", "task": { ... }, "tasks": [ ... ] }
 ```
+
+</div>
 
 اگر `from` خالی باشد از `X-Actor-Id` استفاده می‌شود.
 
@@ -173,10 +203,14 @@ POST /v1/referrals
 
 تسک گروهی در کارتابل همهٔ اعضا `open` است. کسی که کار را برمی‌دارد:
 
+<div dir="ltr">
+
 ```bash
 POST /v1/tasks/{id}/claim
 { "from": "bob" }
 ```
+
+</div>
 
 وضعیت `claimed` و `claimedBy=bob` می‌شود. نفر دوم `409` می‌گیرد. کارتابل بقیه خالی می‌شود. فقط bob می‌تواند complete کند.
 
@@ -188,6 +222,8 @@ POST /v1/tasks/{id}/claim
 
 `GET /v1/instances/{referralInstanceId}/completion`:
 
+<div dir="ltr">
+
 ```json
 {
   "instanceId": "...",
@@ -198,6 +234,8 @@ POST /v1/tasks/{id}/claim
   "tasks": [ ... ]
 }
 ```
+
+</div>
 
 `POST /v1/tasks/{id}/complete` هم فیلد `completion` را برمی‌گرداند.
 
@@ -225,6 +263,8 @@ POST /v1/tasks/{id}/claim
 
 بدون `state` هر سه لیست می‌شود. پاسخ همیشه شمارش دارد:
 
+<div dir="ltr">
+
 ```json
 {
   "user": "alice",
@@ -236,16 +276,22 @@ POST /v1/tasks/{id}/claim
 }
 ```
 
+</div>
+
 `?state=open` فقط لیست بازها را فیلتر می‌کند؛ شمارش‌ها همچنان هر سه دسته را نشان می‌دهد.
 
 ---
 
 ## ۴. Docker
 
+<div dir="ltr">
+
 ```bash
 docker compose up --build
 curl -s http://localhost:8081/health
 ```
+
+</div>
 
 | متغیر | معنی |
 |--------|------|
@@ -257,3 +303,5 @@ curl -s http://localhost:8081/health
 بدون `DATABASE_URL` داده با خاموش شدن سرور از بین می‌رود. Compose به Postgres وصل است.
 
 اسکیما، جداول و ایندکس‌ها: [database.md](database.md).
+
+</div>
