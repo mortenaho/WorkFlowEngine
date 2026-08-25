@@ -1,14 +1,14 @@
 <div dir="rtl">
 
-# معماری
+# معماری سیستم (Architecture)
 
-این انجین گراف BPMN تفسیر نمی‌کند. سرویس‌ها روی یک مدل سادهٔ تعریف / اینستنس / تسک سوار است.
+این موتور گردش کار نیازی به مفسر پیچیدهٔ BPMN ندارد؛ بلکه بر پایهٔ مدل سرراست سه‌گانهٔ «تعریف (Definition)»، «نمونهٔ اجرا (Instance)» و «وظیفه (Task)» طراحی و پیاده‌سازی شده است.
 
-ساختار **Clean Architecture** است: وابستگی به داخل است. Domain هیچ ارجاعی به دیتابیس، HTTP یا JSON ندارد.
+معماری پروژه از الگوی **Clean Architecture** پیروی می‌کند؛ جهت وابستگی‌ها همواره به سمت لایه‌های درونی است و لایهٔ `Domain` هیچ وابستگی یا شناختی نسبت به دیتابیس، پروتکل HTTP، فرمت JSON یا فریم‌ورک‌های بیرونی ندارد.
 
 ---
 
-## ۱. ساختار پروژه
+## ۱. ساختار لایه‌بندی پروژه
 
 <div dir="ltr">
 
@@ -21,19 +21,19 @@ WorkFlowEngine/
 │   │   ├── Common/            # Tenant, Vars, Ids
 │   │   └── Errors/            # EngineException, EngineErrorKind
 │   ├── WorkflowEngine.Application/
-│   │   ├── Engine.cs          # قوانین شروع / ارجاع / تکمیل
-│   │   ├── Ports/             # IStore, IDirectory, ITenantProvider
+│   │   ├── Engine.cs          # قوانین و منطق کسب‌وکار (شروع / ارجاع / تکمیل)
+│   │   ├── Ports/             # رابط‌ها (IStore, IDirectory, ITenantProvider)
 │   │   ├── Tenancy/           # TenantContext
-│   │   └── Results/           # StartResult, ReferResult, Completion, ...
+│   │   └── Results/           # نتایج متدها (StartResult, ReferResult, Completion, ...)
 │   ├── WorkflowEngine.Infrastructure/
-│   │   ├── Persistence/       # MemoryStore, PostgresStore
-│   │   └── Identity/          # StaticDirectory
+│   │   ├── Persistence/       # ذخیره‌سازی داده‌ها (MemoryStore, PostgresStore)
+│   │   └── Identity/          # سرویس هویت و دایرکتوری (StaticDirectory)
 │   └── WorkflowEngine.Server/
-│       ├── Program.cs         # composition root
-│       ├── Controllers/       # کنترلرهای REST
-│       ├── Http/              # middleware، JSON، خطا
-│       ├── Requests/          # بدنهٔ ورودی REST
-│       └── Contracts/         # DTO خروجی + ApiMapper
+│       ├── Program.cs         # ریشهٔ ترکیب وابستگی‌ها (Composition Root)
+│       ├── Controllers/       # کنترلرهای وب REST
+│       ├── Http/              # میان‌افزارها، پیکربندی JSON و نگاشت خطاها
+│       ├── Requests/          # مدل‌های بدنهٔ درخواست ورودی
+│       └── Contracts/         # DTOهای خروجی و ApiMapper
 ├── tests/WorkflowEngine.Tests/
 ├── examples/
 └── docs/
@@ -46,17 +46,17 @@ WorkFlowEngine/
 ```
 Domain  ←  Application  ←  Infrastructure
                       ←  Server (API)
-Server.Program         →  می‌سازد Store/Directory/Engine
+Server.Program         →  ایجاد وابستگی‌های Store / Directory / Engine
 ```
 
 </div>
 
-| پروژه | نقش | اجازه دارد بداند |
-|------|------|------------------|
-| `WorkflowEngine.Domain` | `Definition`, `ProcessInstance`, `WorkflowTask`, `EngineException` | هیچ لایهٔ بیرونی |
-| `WorkflowEngine.Application` | `Engine` (شروع، ارجاع، تکمیل، پایان، فرایندهای کاربر)، `IStore`, `IDirectory` | فقط Domain |
-| `WorkflowEngine.Infrastructure` | Postgres / حافظه / دایرکتوری استاتیک | Application + Domain |
-| `WorkflowEngine.Server` | REST، DTO، Swagger، ترکیب وابستگی‌ها | Application + Infrastructure |
+| پروژه | نقش و مسئولیت | لایه‌های مجاز جهت وابستگی |
+|------|----------------|--------------------------|
+| `WorkflowEngine.Domain` | موجودیت‌ها و خطاهای دامنه (`Definition`, `ProcessInstance`, `WorkflowTask`, `EngineException`) | بدون وابستگی به لایه‌های بیرونی |
+| `WorkflowEngine.Application` | هستهٔ فرایند (`Engine` جهت مدیریت شروع، ارجاع، تکمیل، بستن فرایندها) و پورت‌ها (`IStore`, `IDirectory`) | صرفاً وابسته به `Domain` |
+| `WorkflowEngine.Infrastructure` | پیاده‌سازی ذخیره‌ساز پایگاه داده (Postgres / حافظه) و دایرکتوری کاربران | وابسته به `Application` و `Domain` |
+| `WorkflowEngine.Server` | رابط REST، مدیریت DTOها، Swagger و ترکیب وابستگی‌ها | وابسته به `Application` و `Infrastructure` |
 
 <div dir="ltr">
 
@@ -66,18 +66,18 @@ dotnet run --project src/WorkflowEngine.Server
 
 </div>
 
-| متغیر | پیش‌فرض | معنی |
-|--------|---------|------|
-| `ADDR` | `:8081` | آدرس listen (داخل Docker `:8080`، روی میزبان `8081`) |
-| `DATABASE_URL` | خالی | Postgres؛ وگرنه حافظه |
-| `WF_USERS` | خالی | کاربران دایرکتوری استاتیک |
-| `WF_GROUP_<id>` | — | اعضای گروه `id` |
+| متغیر محیطی | مقدار پیش‌فرض | توضیحات |
+|-------------|---------------|----------|
+| `ADDR` | `:8081` | پورت و آدرس گوش دادن به درخواست‌ها (داخل Docker `:8080`، روی سیستم میزبان `8081`) |
+| `DATABASE_URL` | خالی | رشتهٔ اتصال Postgres؛ در صورت خالی بودن از حافظه موقت استفاده می‌شود |
+| `WF_USERS` | خالی | فهرست کاربران در دایرکتوری ایستا |
+| `WF_GROUP_<id>` | — | اعضای گروه با شناسهٔ `id` |
 
-هویت REST از `X-Actor-Id` است.
+شناسایی کاربر در درخواست‌های REST از طریق هدر `X-Actor-Id` انجام می‌گیرد.
 
 ---
 
-## ۲. مدل مفهومی
+## ۲. مدل مفهومی گردش کار
 
 <div dir="ltr">
 
@@ -89,27 +89,26 @@ flowchart LR
   root --> refer[Refer + definitionKey]
   refer --> child[instanceId جدید]
   refer --> tasks[Task شخص یا گروه]
-  tasks --> inbox[کارتابل]
+  tasks --> inbox[کارتابل وظایف]
   tasks --> done[Completion allCompleted]
 ```
 
 </div>
 
-| سطح | چیست |
-|------|------|
-| Definition | نوع فرایند با `key` (بدون گراف) |
-| Instance | یک اجرا. start یک اینستنس ریشه می‌سازد؛ هر ارجاع اینستنس فرزند می‌سازد |
-| Task | کارتابل. `assigneeKind` = `user` یا `group` |
+| سطح | مفهوم و نقش |
+|------|-------------|
+| Definition | تعریف نوع فرایند با شناسهٔ یکتای `key` (بدون نیاز به دیاگرام‌های گرافیکی) |
+| Instance | نمونهٔ اجرایی فرایند؛ عملیات `Start` یک اینستنس ریشه می‌سازد و هر ارجاع (`Refer`) یک اینستنس فرزند ایجاد می‌کند |
+| Task | رکورد وظیفه در کارتابل؛ انتساب به کاربر (`user`) یا گروه (`group`) |
 
-وضعیت اینستنس: `running` تا وقتی تسک باز دارد؛ بعد از تکمیل همهٔ تسک‌های همان اینستنس ارجاع → `completed`.
-
-وضعیت تسک: `open` | `claimed` | `done` | `cancelled`.
+- **وضعیت اینستنس:** تا زمانی که وظایف باز داشته باشد در وضعیت `running` است؛ پس از تکمیل تمامی وظایفِ مرتبط با همان ارجاع به `completed` تغییر می‌یابد.
+- **وضعیت تسک:** شامل `open` (باز)، `claimed` (تحویل‌گرفته‌شده)، `done` (تکمیل‌شده) و `cancelled` (لغوشده).
 
 ---
 
-## ۳. دیتابیس
+## ۳. پایگاه داده
 
-اگر `DATABASE_URL` ست باشد `PostgresStore` اسکیما را می‌سازد. شرح کامل جداول، ستون‌ها، ایندکس‌ها و مهاجرت: [database.md](database.md).
+در صورت تنظیم متغیر `DATABASE_URL`، کلاس `PostgresStore` اسکیما و جداول را به‌صورت خودکار ایجاد می‌کند. شرح جامع جداول، ستون‌ها، شاخص‌ها و راهنمای مهاجرت در سند [database.md](database.md) آمده است.
 
 <div dir="ltr">
 
@@ -148,55 +147,56 @@ erDiagram
 
 </div>
 
-`Start` اگر تعریفی برای `processKey` نباشد آن را می‌سازد. ارجاع بدون تعریف موجود خطا می‌دهد.
+متد `Start` در صورت عدم وجود تعریف برای `processKey`، آن را به‌طور خودکار ایجاد می‌نماید. اما ارجاع (`Refer`) در صورتی که تعریف فرایند از پیش ثبت نشده باشد، با خطای عدم یافتن مواجه خواهد شد.
 
 ---
 
-## ۴. رفتار سرویس‌ها
+## ۴. رفتار سرویس‌ها و جریان‌های کاری
 
-### Start
+### ۱. شروع فرایند (Start)
 
-1. تعریف را با `processKey` پیدا یا ایجاد می‌کند.
-2. اینستنس `running` با `initiator` و `parameters` می‌سازد.
-3. `{ definitionKey, instanceId }` برمی‌گرداند. تسکی ساخته نمی‌شود.
+۱. تعریف فرایند را با `processKey` بازیابی کرده یا در صورت نبود ایجاد می‌کند.  
+۲. یک نمونهٔ اجرای ریشه با وضعیت `running`، ایجادکننده (`initiator`) و پارامترهای ارسالی می‌سازد.  
+۳. مقادیر `{ definitionKey, instanceId }` را برمی‌گرداند. در این مرحله تسکی ساخته نمی‌شود.
 
-### Refer
+### ۲. ارجاع کار (Refer)
 
-1. `definitionKey` اجباری است (یا از `parentInstanceId` ارث می‌برد).
-2. اینستنس **جدید** می‌سازد (`parent_instance_id` = اینستنس start اگر داده شده).
-3. تسک:
-   - `user` → یک تسک برای آن شخص
-   - `group` → یک تسک گروهی؛ اعضا در Inbox می‌بینند؛ هر عضو می‌تواند complete کند
-   - `users` → یک تسک به‌ازای هر id، همه روی همان اینستنس ارجاع
-4. `{ instanceId, task, tasks }` برمی‌گرداند.
+۱. مقدار `definitionKey` اجباری است (یا در صورت عدم ارسال، از `parentInstanceId` به ارث می‌رسد).  
+۲. یک نمونهٔ اجرای **جدید** ایجاد می‌کند (اگر `parentInstanceId` داده شود، به اینستنس ریشه متصل می‌گردد).  
+۳. ایجاد وظیفه بر اساس نوع انتساب:
+   - `user`: ایجاد یک تسک اختصاصی برای شخص مشخص‌شده.
+   - `group`: ایجاد یک تسک گروهی؛ کلیهٔ اعضای گروه در کارتابل آن را مشاهده کرده و هر عضو پس از تحویل (Claim) می‌تواند آن را تکمیل کند.
+   - `users`: ایجاد یک تسک مجزا به‌ازای هر شناسه، همگی ذیل یک اینستنس ارجاع یکسان.  
+۴. پاسخ خروجی شامل `{ instanceId, task, tasks }` خواهد بود.
 
-### Pending tasks
+### ۳. کارتابل وظایف باز (Pending Tasks)
 
-- `user`: تسک `open` با `assignee_id = user` یا گروههایی که `Directory.UserGroups` برمی‌گرداند
-- `group`: تسک `open` با `assignee_kind=group` و همان شناسه
+- استعلام کاربر (`user`): تسک‌های باز (`open`) منتسب به کاربر یا گروه‌هایی که کاربر در آن‌ها عضویت دارد (`Directory.UserGroups`).
+- استعلام گروه (`group`): تسک‌های باز گروهی با شناسهٔ همان گروه (`assignee_kind = group`).
 
-### Completion
+### ۴. تکمیل وظایف (Completion)
 
-روی `instanceId` ارجاع. `allCompleted` وقتی true است که حداقل یک تسک باشد و هیچ‌کدام `open` نمانده باشد. همان ساختار در خروجی `CompleteTask` هم هست.
+محاسبه بر روی `instanceId` ارجاع انجام می‌شود. شاخص `allCompleted` زمانی برابر `true` خواهد بود که حداقل یک تسک وجود داشته و هیچ تسکی در وضعیت `open` یا `claimed` باقی نمانده باشد.
 
-تکمیل تسک شخصی فقط توسط همان شخص؛ تسک گروهی توسط عضو گروه.
+- تکمیل تسک شخصی صرفاً توسط همان فرد امکان‌پذیر است.
+- تکمیل تسک گروهی تنها توسط عضوی که تسک را تحویل گرفته (Claim کرده) مجاز است.
 
-### Complete and end
+### ۵. تکمیل و بستن کل فرایند (Complete and End)
 
-`CompleteAndEnd` تسک را complete می‌کند، تسک‌های باز باقی‌ماندهٔ درخت را `cancelled` می‌کند، و ریشه را `completed` می‌گذارد.
+متد `CompleteAndEnd` وظیفهٔ جاری را تکمیل کرده، سایر وظایف باز باقی‌مانده در کل درخت فرایند را به وضعیت `cancelled` منتقل می‌کند و اینستنس ریشه و فرزندان را در وضعیت `completed` قرار می‌دهد.
 
-### فرایندهای کاربر
+### ۶. فرایندهای کاربر (User Processes)
 
-`ListUserProcesses(user, state?)` اینستنس‌های start با `initiator = user`:
+متد `ListUserProcesses(user, state?)` فهرست نمونه‌های ریشه‌ای که توسط کاربر آغاز شده‌اند را برمی‌گرداند:
 
-- `notStarted`: بدون تسک
-- `open`: `running` و حداقل یک تسک
-- `closed`: `completed`
+- `notStarted`: آغاز شده اما هنوز هیچ ارجاعی برای آن ثبت نشده است.
+- `open`: دارای تسک باز بوده و ریشه همچنان در وضعیت `running` قرار دارد.
+- `closed`: پرونده با وضعیت `completed` بسته شده است.
 
 ---
 
-## ۵. همزمانی
+## ۵. مدیریت همزمانی و تراکنش‌ها
 
-`TransitionTask` در Postgres با `SELECT ... FOR UPDATE` است. دو complete همزمان روی یک تسک یکی `ErrNotOpen` می‌گیرد.
+متد `TransitionTask` در پیاده‌سازی Postgres از دستور `SELECT ... FOR UPDATE` درون یک تراکنش مجزا بهره می‌برد. بدین ترتیب در صورتی که دو درخواست هم‌زمان برای تکمیل یک تسک ارسال شوند، یکی از آن‌ها موفق بوده و دیگری با خطای `NotOpen` مواجه خواهد شد.
 
 </div>

@@ -1,8 +1,8 @@
 <div dir="rtl">
 
-# نمونه‌ها
+# نمونه‌ها و سناریوها
 
-سرور REST: `dotnet run --project src/WorkflowEngine.Server` روی `:8081`.
+اجرای سرور REST با دستور `dotnet run --project src/WorkflowEngine.Server` روی پورت `:8081`:
 
 <div dir="ltr">
 
@@ -13,6 +13,7 @@ dotnet run --project examples/Scenario
 
 </div>
 
-سناریو: alice فرایند خرید را شروع می‌کند، به bob و cara ارجاع می‌دهد، هر دو complete می‌کنند، `allCompleted` true می‌شود. سپس یک ارجاع گروهی به `legal` که bob کلیم و complete می‌کند.
+**شرح سناریو:**
+کاربر `alice` فرایند خرید (`purchase`) را آغاز می‌کند و آن را به‌صورت هم‌زمان به دو کاربر `bob` و `cara` ارجاع می‌دهد. با تکمیل وظیفه توسط هر دو نفر، وضعیت `allCompleted` برابر `true` می‌شود. سپس یک ارجاع گروهی به تیم حقوقی (`legal`) ثبت شده و کاربر `bob` وظیفه را به خود تخصیص داده (Claim) و تکمیل می‌کند.
 
 </div>

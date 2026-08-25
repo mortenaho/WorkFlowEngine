@@ -1,56 +1,58 @@
 <div dir="rtl">
 
-# راهنمای استفاده
+# راهنمای استفاده (Usage Guide)
 
-سرویس‌ها روی یک کرنل:
+قابلیت‌های کلیدی موتور گردش کار:
 
-1. شروع فرایند
-2. لیست اجراهای یک processKey
-3. ارجاع به شخص / گروه / چند نفر
-4. کارتابل تسک‌های باز
-5. وضعیت تکمیل همهٔ گیرندگان یک درخواست
+۱. شروع فرایند جدید  
+۲. فهرست‌گیری از اجراهای یک فرایند (`processKey`)  
+۳. ارجاع کار به کاربر، گروه، یا چند نفر هم‌زمان  
+۴. کارتابل وظایف باز  
+۵. بررسی وضعیت تکمیل ارجاع‌های چندنفره  
+۶. تکمیل وظیفه و بستن کامل پرونده  
+۷. دریافت آمار و فهرست فرایندهای مرتبط با یک کاربر  
 
 <div dir="ltr">
 
 ```bash
 dotnet run --project src/WorkflowEngine.Server
-# Swagger: http://127.0.0.1:8081/swagger
+# مستندات تعاملی Swagger: http://127.0.0.1:8081/swagger
 ```
 
 </div>
 
-| کار | درخواست |
-|-----|---------|
-| شروع | `POST /v1/processes/start` با `{ "processKey", "initiator", "parameters?" }` |
+| عملیات | نحوهٔ فراخوانی (REST API) |
+|--------|---------------------------|
+| شروع فرایند | `POST /v1/processes/start` با بدنهٔ `{ "processKey", "initiator", "parameters?" }` |
 | لیست اجراها | `GET /v1/processes/{processKey}/instances` |
-| ارجاع | `POST /v1/referrals` با `{ "definitionKey", "parentInstanceId?", "to" }` |
-| کارتابل | `GET /v1/tasks?user=bob` یا `?group=legal` |
-| کلیم | `POST /v1/tasks/{id}/claim` |
-| آزاد کردن | `POST /v1/tasks/{id}/unclaim` |
-| وضعیت چندنفره | `GET /v1/instances/{id}/completion` |
-| تکمیل تسک | `POST /v1/tasks/{id}/complete` |
+| ارجاع کار | `POST /v1/referrals` با بدنهٔ `{ "definitionKey", "parentInstanceId?", "to" }` |
+| کارتابل وظایف | `GET /v1/tasks?user=bob` یا `GET /v1/tasks?group=legal` |
+| تحویل گرفتن تسک (Claim) | `POST /v1/tasks/{id}/claim` |
+| لغو تحویل تسک (Unclaim) | `POST /v1/tasks/{id}/unclaim` |
+| وضعیت تکمیل چندنفره | `GET /v1/instances/{id}/completion` |
+| تکمیل وظیفه | `POST /v1/tasks/{id}/complete` |
 | تکمیل و پایان فرایند | `POST /v1/tasks/{id}/complete-and-end` |
-| فرایندهای کاربر | `GET /v1/users/{user}/processes` با `state=open` یا `closed` یا `notStarted` |
+| فرایندهای کاربر | `GET /v1/users/{user}/processes` با فیلتر اختیاری `state=open`، `closed` یا `notStarted` |
 
-دو راه مصرف: کتابخانه (`Application` + `Infrastructure`) و REST. نمونه curl: [`examples/curl.sh`](../examples/curl.sh).
-
----
-
-## ۱. مفاهیم
-
-| واژه | معنی |
-|------|------|
-| processKey | نوع فرایند (مثلاً `purchase`) |
-| definitionKey | کلید تعریف همان فرایند؛ در خروجی start برمی‌گردد |
-| instanceId | یک اجرای زنده. start یک اینستنس می‌سازد؛ هر ارجاع اینستنس **جدید** می‌سازد |
-| Task | آیتم کارتابل برای شخص یا گروه |
-| Inbox | تسک‌های `open` دست یک شخص (به‌علاوه گروه‌هایش) یا یک گروه |
-
-بازیگر REST هدر `X-Actor-Id` است. انجین کاربر ذخیره نمی‌کند؛ گروه‌ها را با `Directory` می‌دهید.
+امکان استفاده به دو شیوه وجود دارد: کتابخانهٔ داخلی در کد (`Application` + `Infrastructure`) و وب‌سرویس REST. نمونه اسکریپت آزمایشی: [`examples/curl.sh`](../examples/curl.sh).
 
 ---
 
-## ۲. SDK
+## ۱. مفاهیم پایه
+
+| واژه | توضیحات و مفهوم |
+|------|-----------------|
+| `processKey` | کلید شناسهٔ نوع فرایند (مانند `purchase` یا `employeeTermination`) |
+| `definitionKey` | کلید تعریف ثبت‌شده برای فرایند که در خروجی متد شروع بازگردانده می‌شود |
+| `instanceId` | شناسهٔ یک نمونهٔ اجرایی؛ فراخوانی `Start` نمونهٔ ریشه را می‌سازد و هر ارجاع (`Refer`) یک نمونهٔ جدید ایجاد می‌کند |
+| `Task` | رکورد وظیفه در کارتابل که به یک کاربر یا یک گروه تخصیص یافته است |
+| `Inbox` / `Tasks` | وظایف در وضعیت باز (`open`) متعلق به یک کاربر (شامل وظایف فردی و گروه‌های عضو) یا یک گروه |
+
+شناسهٔ انجام‌دهندهٔ عملیات از طریق هدر `X-Actor-Id` ارسال می‌گردد. موتور گردش کار جدول اختصاصی برای کاربران ذخیره نمی‌کند و اطلاعات اعضا و گروه‌ها را از طریق رابط `IDirectory` دریافت می‌نماید.
+
+---
+
+## ۲. استفاده از طریق SDK در زبان C#‎
 
 <div dir="ltr">
 
@@ -68,33 +70,38 @@ var dir = new StaticDirectory(
     });
 var eng = new Engine(new MemoryStore(), dir);
 
+// شروع فرایند
 var started = await eng.Start("purchase", "alice", new Dictionary<string, object?> { ["amount"] = 1.5e8 });
-// started.DefinitionKey, started.InstanceId
+// مقادیر خروجی: started.DefinitionKey, started.InstanceId
 
+// ارجاع به کاربر یا گروه
 var refer = await eng.Refer("alice", new ReferInput
 {
     DefinitionKey = started.DefinitionKey,
     ParentInstanceId = started.InstanceId,
     Title = "بررسی حقوقی",
-    ToKind = AssigneeKind.User, // یا AssigneeKind.Group / AssigneeKind.Users
+    ToKind = AssigneeKind.User, // یا AssigneeKind.Group یا AssigneeKind.Users
     ToId = "bob",
-    // ToIds = ["bob", "cara"], // برای AssigneeKind.Users
+    // ToIds = ["bob", "cara"], // در صورت انتخاب AssigneeKind.Users
 });
-// refer.InstanceId, refer.Task / refer.Tasks
+// مقادیر خروجی: refer.InstanceId, refer.Task / refer.Tasks
 
+// دریافت وظایف کارتابل
 var inbox = await eng.PendingTasks("bob", "");
 var groupInbox = await eng.PendingTasks("", "legal");
 
+// تکمیل و بستن کل پرونده
 var ended = await eng.CompleteAndEnd(refer.Task!.Id, "bob", "پرونده بسته شد");
-_ = ended.Process.Status; // completed
+_ = ended.Process.Status; // برابر با completed
 
+// دریافت آمار و وضعیت فرایندهای کاربر
 var mine = await eng.ListUserProcesses("alice");
 var open = await eng.ListUserProcesses("alice", "open");
 ```
 
 </div>
 
-در پروداکشن `IDirectory` را در Infrastructure روی LDAP / سرویس هویت خود پیاده کنید:
+در محیط پروداکشن می‌توانید رابط `IDirectory` را به سرویس هویت سازمانی خود (مانند Active Directory / LDAP یا SSO) متصل کنید:
 
 <div dir="ltr">
 
@@ -111,11 +118,15 @@ public interface IDirectory
 
 ---
 
-## ۳. REST
+## ۳. راهنمای وب‌سرویس REST API
 
-پایه: `http://localhost:8081`. هویت: `X-Actor-Id`. اختیاری: `X-Tenant-Id` (سازمان)، `X-API-Key` (اگر `WF_API_KEYS` ست باشد).
+آدرس پایه: `http://localhost:8081`.  
+هدرهای اصلی:
+- `X-Actor-Id`: شناسهٔ کاربر انجام‌دهندهٔ درخواست (اجباری در اکثر عملیات).
+- `X-Tenant-Id`: شناسهٔ سازمان جهت جداسازی داده‌ها (اختیاری؛ پیش‌فرض: `default`).
+- `X-API-Key`: کلید امنیتی دسترسی (در صورت فعال بودن متغیر `WF_API_KEYS`).
 
-### شروع
+### ۱. شروع فرایند (Start)
 
 <div dir="ltr">
 
@@ -128,9 +139,9 @@ POST /v1/processes/start
 
 </div>
 
-اگر `initiator` خالی باشد از `X-Actor-Id` استفاده می‌شود. اگر تعریف برای `processKey` نباشد، ساخته می‌شود.
+در صورت خالی بودن فیلد `initiator`، مقدار هدر `X-Actor-Id` جایگزین می‌شود. اگر برای `processKey` تعریفی وجود نداشته باشد، به‌صورت خودکار ساخته می‌شود.
 
-یک `processKey` بارها استارت می‌شود. مثلاً `employeeTermination` برای هر کارمند یک اینستنس جدا:
+یک `processKey` می‌تواند بارها شروع شود (برای نمونه فرایند `employeeTermination` برای هر کارمند به‌طور مستقل اجرا می‌گردد):
 
 <div dir="ltr">
 
@@ -163,9 +174,9 @@ GET /v1/processes/employeeTermination/instances
 
 </div>
 
-فقط اجراهای start هستند؛ ارجاع‌های فرزند در `tasks` همان اجرا می‌آیند.
+فهرست فوق فقط نمونه‌های ریشه (Start) را بازمی‌گرداند؛ وظایف مربوط به ارجاع‌های فرزند نیز در فیلد `tasks` همان نمونه لیست می‌شوند.
 
-### ارجاع
+### ۲. ارجاع کار (Referral)
 
 <div dir="ltr">
 
@@ -173,7 +184,7 @@ GET /v1/processes/employeeTermination/instances
 POST /v1/referrals
 {
   "definitionKey": "purchase",
-  "parentInstanceId": "<instance از start>",
+  "parentInstanceId": "<شناسه instance دریافتی از start>",
   "from": "alice",
   "title": "بررسی",
   "to": { "kind": "user", "id": "bob" }
@@ -184,24 +195,24 @@ POST /v1/referrals
 
 </div>
 
-اگر `from` خالی باشد از `X-Actor-Id` استفاده می‌شود.
+در صورت خالی بودن فیلد `from`، مقدار هدر `X-Actor-Id` درج می‌شود.
 
-| `to.kind` | فیلد | نتیجه |
-|-----------|------|--------|
-| `user` | `id` | یک تسک برای آن شخص |
-| `group` | `id` | یک تسک برای گروه؛ همهٔ اعضا در کارتابل می‌بینند |
-| `users` | `ids` | یک تسک برای هر نفر؛ با همان `instanceId` وضعیت همه را می‌گیرید |
+| مقدار `to.kind` | فیلدهای مورد نیاز | نتیجه |
+|-----------------|-------------------|--------|
+| `user` | `id` | ایجاد یک تسک اختصاصی برای همان کاربر |
+| `group` | `id` | ایجاد یک تسک گروهی؛ کلیهٔ اعضای گروه آن را در کارتابل مشاهده می‌کنند |
+| `users` | `ids` | ایجاد یک تسک مجزا به‌ازای هر کاربر؛ وضعیت تکمیل کل ارجاع با شناسهٔ `instanceId` قابل رهگیری است |
 
-### کارتابل
+### ۳. کارتابل وظایف (Tasks)
 
-- `GET /v1/tasks?user=bob` — تسک شخصی + تسک گروه‌هایی که bob عضو آن‌هاست
-- `GET /v1/tasks?group=legal` — فقط تسک‌های همان گروه
+- `GET /v1/tasks?user=bob` — دریافت وظایف شخصی کاربر `bob` به‌همراه وظایف گروه‌هایی که وی در آن‌ها عضویت دارد.
+- `GET /v1/tasks?group=legal` — صرفاً وظایف ارجاع‌شده به گروه `legal`.
 
-هر تسک `assigneeKind` و `assigneeId` دارد تا معلوم باشد دست کیست.
+هر تسک دارای مشخصه‌های `assigneeKind` و `assigneeId` است تا مالکیت آن مشخص باشد.
 
-### کلیم
+### ۴. تحویل گرفتن وظیفهٔ گروهی (Claim)
 
-تسک گروهی در کارتابل همهٔ اعضا `open` است. کسی که کار را برمی‌دارد:
+تسک‌های گروهی در ابتدا در وضعیت `open` قرار دارند و برای همهٔ اعضای گروه قابل مشاهده هستند. عضوی که می‌خواهد وظیفه را انجام دهد آن را رزرو می‌کند:
 
 <div dir="ltr">
 
@@ -212,15 +223,21 @@ POST /v1/tasks/{id}/claim
 
 </div>
 
-وضعیت `claimed` و `claimedBy=bob` می‌شود. نفر دوم `409` می‌گیرد. کارتابل بقیه خالی می‌شود. فقط bob می‌تواند complete کند.
+وضعیت تسک به `claimed` و فیلد `claimedBy` به `bob` تغییر می‌یابد. در صورت تلاش عضو دیگر برای کلیم هم‌زمان، خطای `409 Conflict` بازگردانده شده و تسک از کارتابل سایر اعضا خارج می‌شود. پس از این مرحله، صرفاً کاربر `bob` مجاز به تکمیل تسک خواهد بود.
 
-`POST /v1/tasks/{id}/unclaim` تسک را دوباره `open` می‌کند.
+با فراخوانی `POST /v1/tasks/{id}/unclaim` تسک مجدداً آزاد شده و به وضعیت `open` بازمی‌گردد.
 
-تسک شخصی بدون کلیم هم complete می‌شود؛ کلیم اختیاری است.
+تسک‌های فردی نیازی به کلیم اجباری ندارند و مستقیماً قابل تکمیل هستند.
 
-### تکمیل چندنفره
+### ۵. بررسی وضعیت تکمیل چندنفره (Completion)
 
-`GET /v1/instances/{referralInstanceId}/completion`:
+<div dir="ltr">
+
+```bash
+GET /v1/instances/{referralInstanceId}/completion
+```
+
+</div>
 
 <div dir="ltr">
 
@@ -237,31 +254,29 @@ POST /v1/tasks/{id}/claim
 
 </div>
 
-`POST /v1/tasks/{id}/complete` هم فیلد `completion` را برمی‌گرداند.
+پاسخ متد `POST /v1/tasks/{id}/complete` نیز شامل فیلد `completion` است.
 
-تکمیل معمولی فقط تسک (و در صورت لزوم اینستنس ارجاع) را تمام می‌کند؛ ریشهٔ فرایند `running` می‌ماند.
+تکمیل معمولی صرفاً همان وظیفه (و در صورت اتمام همهٔ وظایف ارجاع، اینستنس ارجاع مربوطه) را می‌بندد؛ اما اینستنس ریشه در وضعیت `running` باقی می‌ماند.
 
-### تکمیل و پایان فرایند
+### ۶. تکمیل وظیفه و بستن کل فرایند (Complete and End)
 
-`POST /v1/tasks/{id}/complete-and-end` همان مجوز complete را دارد، بعد:
+مسیر `POST /v1/tasks/{id}/complete-and-end` با همان مجوزهای تکمیل وظیفه، اقدامات زیر را به‌صورت یکپارچه انجام می‌دهد:
 
-1. تسک را `done` می‌کند
-2. بقیهٔ تسک‌های `open` / `claimed` همان فرایند را `cancelled` می‌کند (از کارتابل خارج می‌شوند)
-3. اینستنس ریشه و ارجاع‌های فرزند را `completed` می‌گذارد
+۱. وضعیت وظیفهٔ جاری را به `done` تغییر می‌دهد.  
+۲. سایر وظایف باز (`open` یا `claimed`) در کل درخت فرایند را به وضعیت `cancelled` منتقل کرده و از کارتابل‌ها خارج می‌سازد.  
+۳. اینستنس ریشه و تمام ارجاع‌های فرزند را در وضعیت `completed` قرار می‌دهد.  
 
-ارجاع بعدی روی همان ریشه `400` است.
+پس از این مرحله، ثبت هرگونه ارجاع جدید روی این فرایند با خطای `400 Bad Request` مواجه خواهد شد.
 
-### فرایندهای کاربر
+### ۷. فرایندهای کاربر (User Processes)
 
-`GET /v1/users/alice/processes` اینستنس‌های start که alice شروع کرده:
+متد `GET /v1/users/alice/processes` فهرست فرایندهایی که توسط کاربر `alice` ایجاد شده‌اند را بازمی‌گرداند:
 
-| `state` | معنی |
-|---------|------|
-| `notStarted` | start شده، هنوز ارجاعی ندارد |
-| `open` | ارجاع خورده و ریشه هنوز `running` است |
-| `closed` | با complete-and-end بسته شده |
-
-بدون `state` هر سه لیست می‌شود. پاسخ همیشه شمارش دارد:
+| وضعیت (`state`) | توضیحات |
+|-----------------|----------|
+| `notStarted` | فرایند شروع شده اما هنوز ارجاعی برای آن ثبت نشده است |
+| `open` | فرایند دارای ارجاع بوده و ریشه همچنان در وضعیت `running` قرار دارد |
+| `closed` | فرایند به‌طور کامل خاتمه یافته (`completed`) است |
 
 <div dir="ltr">
 
@@ -278,11 +293,11 @@ POST /v1/tasks/{id}/claim
 
 </div>
 
-`?state=open` فقط لیست بازها را فیلتر می‌کند؛ شمارش‌ها همچنان هر سه دسته را نشان می‌دهد.
+با ارسال پارامتر `?state=open`، لیست خروجی بر اساس فرایندهای باز فیلتر می‌شود؛ در حالی که مقادیر آماری (`open`, `closed`, `notStarted`, `total`) همواره وضعیت کلی را گزارش می‌دهند.
 
 ---
 
-## ۴. Docker
+## ۴. پیکربندی محیط و Docker
 
 <div dir="ltr">
 
@@ -293,15 +308,15 @@ curl -s http://localhost:8081/health
 
 </div>
 
-| متغیر | معنی |
-|--------|------|
-| `DATABASE_URL` | اتصال Postgres؛ خالی = حافظه |
-| `ADDR` | پیش‌فرض `:8081` |
-| `WF_USERS` / `WF_GROUP_<id>` | دایرکتوری استاتیک؛ بدون پیش‌فرض |
-| `WF_API_KEYS` | اگر ست شود همهٔ مسیرها جز `/health` کلید می‌خواهند |
+| متغیر محیطی | توضیحات |
+|-------------|----------|
+| `DATABASE_URL` | رشتهٔ اتصال به پایگاه دادهٔ Postgres؛ در صورت عدم تنظیم، داده‌ها در حافظه موقت نگهداری می‌شوند |
+| `ADDR` | پورت و آدرس دریافت درخواست‌ها (پیش‌فرض: `:8081`) |
+| `WF_USERS` / `WF_GROUP_<id>` | تنظیمات کاربران و اعضای گروه‌ها در دایرکتوری ایستا |
+| `WF_API_KEYS` | کلیدهای احراز هویت API؛ در صورت تنظیم، درخواست‌ها ملزم به ارسال کلید معتبر هستند |
 
-بدون `DATABASE_URL` داده با خاموش شدن سرور از بین می‌رود. Compose به Postgres وصل است.
+در صورت عدم استفاده از `DATABASE_URL`، با خاموش شدن سرویس داده‌ها پاک می‌شوند. فایل `docker-compose.yml` به‌طور پیش‌فرض سرویس Postgres را پیکربندی و متصل می‌کند.
 
-اسکیما، جداول و ایندکس‌ها: [database.md](database.md).
+مستندات ساختار پایگاه داده: [database.md](database.md).
 
 </div>
