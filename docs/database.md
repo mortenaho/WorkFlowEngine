@@ -346,7 +346,7 @@ COMMIT;
 
 ## ۱۲. سناریوی عملی تغییرات داده‌ها
 
-**سناریو:** کاربر Alice فرایند `purchase` را شروع کرده و کار را به گروه `legal` ارجاع می‌دهد؛ سپس Bob وظیفه را تحویل گرفته و تکمیل می‌کند.
+**سناریو:** کاربر Alice فرایند `purchase` را شروع کرده و کار را به گروه `legal` ارجاع می‌دهد؛ سپس Mortenaho وظیفه را تحویل گرفته و تکمیل می‌کند.
 
 ### ۱. شروع فرایند (Start)
 
@@ -365,13 +365,13 @@ COMMIT;
 | `instances` | `ref_1` | — | `root_1` | — | — | `running` |
 | `tasks` | `task_1` | `ref_1` | `root_1` | `group` | `legal` | `open` |
 
-کلیهٔ اعضای گروه حقوقی (مثلاً Bob و Cara) تسک را در کارتابل خود مشاهده می‌کنند.
+کلیهٔ اعضای گروه حقوقی (مثلاً Mortenaho و Cara) تسک را در کارتابل خود مشاهده می‌کنند.
 
-### ۳. تحویل گرفتن وظیفه توسط Bob (Claim)
+### ۳. تحویل گرفتن وظیفه توسط Mortenaho (Claim)
 
-فیلد `status` به `claimed` و `claimed_by` به `bob` تغییر می‌یابد. تسک از کارتابل Cara خارج شده و چنانچه وی تلاش به کلیم کند، خطای `409 Conflict` دریافت خواهد کرد.
+فیلد `status` به `claimed` و `claimed_by` به `mortenaho` تغییر می‌یابد. تسک از کارتابل Cara خارج شده و چنانچه وی تلاش به کلیم کند، خطای `409 Conflict` دریافت خواهد کرد.
 
-### ۴. تکمیل وظیفه توسط Bob (Complete)
+### ۴. تکمیل وظیفه توسط Mortenaho (Complete)
 
 وضعیت تسک به `done` تغییر کرده و مقدار `completed_at` ثبت می‌شود. نمونهٔ اجرای ارجاع (`ref_1`) به دلیل تکمیل تمام وظایفش به وضعیت `completed` منتقل می‌گردد؛ در حالی که نمونهٔ ریشه (`root_1`) تا زمان دستور پایان همچنان در وضعیت `running` باقی می‌ماند.
 
@@ -403,8 +403,8 @@ FROM tasks
 WHERE tenant_id = 'default'
   AND status IN ('open', 'claimed')
   AND (
-    (assignee_kind = 'user' AND assignee_id = 'bob')
-    OR claimed_by = 'bob'
+    (assignee_kind = 'user' AND assignee_id = 'mortenaho')
+    OR claimed_by = 'mortenaho'
   );
 
 -- مشاهدهٔ ساختار درختی یک فرایند (ریشه و تمام ارجاع‌های فرزند)

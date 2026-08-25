@@ -3,10 +3,10 @@ using WorkflowEngine.Domain;
 using WorkflowEngine.Infrastructure;
 
 var dir = new StaticDirectory(
-    ["alice", "bob", "cara", "dan"],
+    ["alice", "mortenaho", "cara", "dan"],
     new Dictionary<string, IReadOnlyList<string>>
     {
-        ["legal"] = ["bob", "cara"],
+        ["legal"] = ["mortenaho", "cara"],
         ["finance"] = ["dan", "cara"],
     });
 var eng = new Engine(new MemoryStore(), dir);
@@ -20,7 +20,7 @@ var refer = await eng.Refer("alice", new ReferInput
     ParentInstanceId = started.InstanceId,
     Title = "تأیید موازی",
     ToKind = AssigneeKind.Users,
-    ToIds = ["bob", "cara"],
+    ToIds = ["mortenaho", "cara"],
 });
 Console.WriteLine($"refer {refer.InstanceId} tasks={refer.Tasks.Count}");
 
@@ -38,6 +38,6 @@ var group = await eng.Refer("alice", new ReferInput
     ToKind = AssigneeKind.Group,
     ToId = "legal",
 });
-await eng.ClaimTask(group.Task!.Id, "bob");
-var last = await eng.CompleteTask(group.Task.Id, "bob", "ok");
+await eng.ClaimTask(group.Task!.Id, "mortenaho");
+var last = await eng.CompleteTask(group.Task.Id, "mortenaho", "ok");
 Console.WriteLine($"group allCompleted={last.Completion.AllCompleted}");

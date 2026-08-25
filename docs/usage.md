@@ -62,10 +62,10 @@ using WorkflowEngine.Domain;
 using WorkflowEngine.Infrastructure;
 
 var dir = new StaticDirectory(
-    ["alice", "bob", "cara", "dan"],
+    ["alice", "mortenaho", "cara", "dan"],
     new Dictionary<string, IReadOnlyList<string>>
     {
-        ["legal"] = ["bob", "cara"],
+        ["legal"] = ["mortenaho", "cara"],
         ["finance"] = ["dan", "cara"],
     });
 var eng = new Engine(new MemoryStore(), dir);
@@ -81,17 +81,17 @@ var refer = await eng.Refer("alice", new ReferInput
     ParentInstanceId = started.InstanceId,
     Title = "بررسی حقوقی",
     ToKind = AssigneeKind.User, // یا AssigneeKind.Group یا AssigneeKind.Users
-    ToId = "bob",
-    // ToIds = ["bob", "cara"], // در صورت انتخاب AssigneeKind.Users
+    ToId = "mortenaho",
+    // ToIds = ["mortenaho", "cara"], // در صورت انتخاب AssigneeKind.Users
 });
 // مقادیر خروجی: refer.InstanceId, refer.Task / refer.Tasks
 
 // دریافت وظایف کارتابل
-var inbox = await eng.PendingTasks("bob", "");
+var inbox = await eng.PendingTasks("mortenaho", "");
 var groupInbox = await eng.PendingTasks("", "legal");
 
 // تکمیل و بستن کل پرونده
-var ended = await eng.CompleteAndEnd(refer.Task!.Id, "bob", "پرونده بسته شد");
+var ended = await eng.CompleteAndEnd(refer.Task!.Id, "mortenaho", "پرونده بسته شد");
 _ = ended.Process.Status; // برابر با completed
 
 // دریافت آمار و وضعیت فرایندهای کاربر
@@ -374,7 +374,7 @@ POST /v1/referrals
   "parentInstanceId": "<شناسه instance دریافتی از start>",
   "from": "alice",
   "title": "بررسی",
-  "to": { "kind": "user", "id": "bob" }
+  "to": { "kind": "user", "id": "mortenaho" }
 }
 
 → { "instanceId": "...", "definitionKey": "purchase", "task": { ... }, "tasks": [ ... ] }
@@ -405,12 +405,12 @@ POST /v1/referrals
 
 ```bash
 POST /v1/tasks/{id}/claim
-{ "from": "bob" }
+{ "from": "mortenaho" }
 ```
 
 </div>
 
-وضعیت تسک به `claimed` و فیلد `claimedBy` به `bob` تغییر می‌یابد. در صورت تلاش عضو دیگر برای کلیم هم‌زمان، خطای `409 Conflict` بازگردانده شده و تسک از کارتابل سایر اعضا خارج می‌شود. پس از این مرحله، صرفاً کاربر `bob` مجاز به تکمیل تسک خواهد بود.
+وضعیت تسک به `claimed` و فیلد `claimedBy` به `mortenaho` تغییر می‌یابد. در صورت تلاش عضو دیگر برای کلیم هم‌زمان، خطای `409 Conflict` بازگردانده شده و تسک از کارتابل سایر اعضا خارج می‌شود. پس از این مرحله، صرفاً کاربر `mortenaho` مجاز به تکمیل تسک خواهد بود.
 
 با فراخوانی `POST /v1/tasks/{id}/unclaim` تسک مجدداً آزاد شده و به وضعیت `open` بازمی‌گردد.
 

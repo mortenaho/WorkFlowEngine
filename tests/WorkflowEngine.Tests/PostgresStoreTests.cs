@@ -10,9 +10,9 @@ public class PostgresStoreTests
             return;
 
         await using var store = await PostgresStore.Open(dsn);
-        var dir = new StaticDirectory(["alice", "bob"], new Dictionary<string, IReadOnlyList<string>>
+        var dir = new StaticDirectory(["alice", "mortenaho"], new Dictionary<string, IReadOnlyList<string>>
         {
-            ["legal"] = ["bob"],
+            ["legal"] = ["mortenaho"],
         });
         var eng = new Engine(store, dir);
         using var tenant = TenantContext.Use("test-" + Ids.New()[..8]);
@@ -22,7 +22,7 @@ public class PostgresStoreTests
             DefinitionKey = started.DefinitionKey,
             ParentInstanceId = started.InstanceId,
             ToKind = AssigneeKind.Users,
-            ToIds = ["alice", "bob"],
+            ToIds = ["alice", "mortenaho"],
         });
         await eng.CompleteTask(refer.Tasks[0].Id, refer.Tasks[0].AssigneeId, "");
         var last = await eng.CompleteTask(refer.Tasks[1].Id, refer.Tasks[1].AssigneeId, "");

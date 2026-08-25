@@ -19,27 +19,27 @@ echo "$START"
 DEF=$(echo "$START" | python3 -c 'import json,sys; print(json.load(sys.stdin)["definitionKey"])')
 ROOT=$(echo "$START" | python3 -c 'import json,sys; print(json.load(sys.stdin)["instanceId"])')
 
-echo "== refer to bob + cara =="
+echo "== refer to mortenaho + cara =="
 REF=$(json alice -X POST "$BASE/v1/referrals" -d "$(cat <<EOF
-{"definitionKey":"$DEF","parentInstanceId":"$ROOT","title":"تأیید موازی","to":{"kind":"users","ids":["bob","cara"]}}
+{"definitionKey":"$DEF","parentInstanceId":"$ROOT","title":"تأیید موازی","to":{"kind":"users","ids":["mortenaho","cara"]}}
 EOF
 )")
 echo "$REF"
 RID=$(echo "$REF" | python3 -c 'import json,sys; print(json.load(sys.stdin)["instanceId"])')
-BOB_TASK=$(echo "$REF" | python3 -c 'import json,sys; d=json.load(sys.stdin);
-print(next(t["id"] for t in d["tasks"] if t["assigneeId"]=="bob"))')
+MORTENAHO_TASK=$(echo "$REF" | python3 -c 'import json,sys; d=json.load(sys.stdin);
+print(next(t["id"] for t in d["tasks"] if t["assigneeId"]=="mortenaho"))')
 CARA_TASK=$(echo "$REF" | python3 -c 'import json,sys; d=json.load(sys.stdin);
 print(next(t["id"] for t in d["tasks"] if t["assigneeId"]=="cara"))')
 
-echo "== inbox bob =="
-json bob "$BASE/v1/tasks?user=bob"
+echo "== inbox mortenaho =="
+json mortenaho "$BASE/v1/tasks?user=mortenaho"
 echo
 echo "== completion before =="
 json alice "$BASE/v1/instances/$RID/completion"
 echo
 
-echo "== bob complete =="
-json bob -X POST "$BASE/v1/tasks/$BOB_TASK/complete" -d '{"note":"ok"}'
+echo "== mortenaho complete =="
+json mortenaho -X POST "$BASE/v1/tasks/$MORTENAHO_TASK/complete" -d '{"note":"ok"}'
 echo
 echo "== cara complete =="
 json cara -X POST "$BASE/v1/tasks/$CARA_TASK/complete" -d '{"note":"ok"}'
@@ -67,12 +67,12 @@ START2=$(json alice -X POST "$BASE/v1/processes/start" \
   -d '{"processKey":"purchase","initiator":"alice"}')
 ROOT2=$(echo "$START2" | python3 -c 'import json,sys; print(json.load(sys.stdin)["instanceId"])')
 REF2=$(json alice -X POST "$BASE/v1/referrals" -d "$(cat <<EOF
-{"definitionKey":"$DEF","parentInstanceId":"$ROOT2","title":"تأیید نهایی","to":{"kind":"users","ids":["bob","cara"]}}
+{"definitionKey":"$DEF","parentInstanceId":"$ROOT2","title":"تأیید نهایی","to":{"kind":"users","ids":["mortenaho","cara"]}}
 EOF
 )")
 END_TASK=$(echo "$REF2" | python3 -c 'import json,sys; d=json.load(sys.stdin);
-print(next(t["id"] for t in d["tasks"] if t["assigneeId"]=="bob"))')
-json bob -X POST "$BASE/v1/tasks/$END_TASK/complete-and-end" -d '{"note":"پرونده بسته شد"}'
+print(next(t["id"] for t in d["tasks"] if t["assigneeId"]=="mortenaho"))')
+json mortenaho -X POST "$BASE/v1/tasks/$END_TASK/complete-and-end" -d '{"note":"پرونده بسته شد"}'
 echo
 json alice "$BASE/v1/users/alice/processes?state=closed"
 echo

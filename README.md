@@ -55,7 +55,7 @@ curl -s http://127.0.0.1:8081/v1/processes/employeeTermination/instances
 ```bash
 curl -s -X POST http://127.0.0.1:8081/v1/referrals \
   -H 'Content-Type: application/json' -H 'X-Actor-Id: alice' \
-  -d '{"definitionKey":"purchase","parentInstanceId":"INSTANCE","from":"alice","title":"بررسی","to":{"kind":"user","id":"bob"}}'
+  -d '{"definitionKey":"purchase","parentInstanceId":"INSTANCE","from":"alice","title":"بررسی","to":{"kind":"user","id":"mortenaho"}}'
 ```
 
 </div>
@@ -79,8 +79,8 @@ curl -s 'http://127.0.0.1:8081/v1/tasks?group=legal'
 
 ```bash
 curl -s -X POST http://127.0.0.1:8081/v1/tasks/TASK_ID/claim \
-  -H 'Content-Type: application/json' -H 'X-Actor-Id: bob' \
-  -d '{"from":"bob"}'
+  -H 'Content-Type: application/json' -H 'X-Actor-Id: mortenaho' \
+  -d '{"from":"mortenaho"}'
 ```
 
 </div>
@@ -103,7 +103,7 @@ curl -s http://127.0.0.1:8081/v1/instances/REFERRAL_INSTANCE/completion
 
 ```bash
 curl -s -X POST http://127.0.0.1:8081/v1/tasks/TASK_ID/complete-and-end \
-  -H 'Content-Type: application/json' -H 'X-Actor-Id: bob' \
+  -H 'Content-Type: application/json' -H 'X-Actor-Id: mortenaho' \
   -d '{"note":"پرونده بسته شد"}'
 ```
 
@@ -138,7 +138,7 @@ docker compose up --build
 | `ADDR` | `:8081` | آدرس گوش دادن به درخواست‌ها (Listen) |
 | `DATABASE_URL` | خالی | اتصال به Postgres (در صورت خالی بودن، از ذخیره‌ساز حافظه‌ای استفاده می‌شود) |
 | `WF_USERS` | خالی | فهرست کاربران دایرکتوری ایستا |
-| `WF_GROUP_<id>` | — | اعضای گروه `id` (مثال: `WF_GROUP_legal=bob,cara`) |
+| `WF_GROUP_<id>` | — | اعضای گروه `id` (مثال: `WF_GROUP_legal=mortenaho,cara`) |
 | `WF_API_KEYS` | در Development خالی؛ در پروداکشن اجباری | کلید مشترک سرویس (نه توکن لاگین کاربر). فقط بک‌اند/Gateway با هدر `X-API-Key` یا `Authorization: Bearer` بفرستد — نه React. بدون آن در غیر از Development فرایند شروع نمی‌شود. |
 
 **معماری پیشنهادی با فرانت React:** مرورگر → API اپ شما (جلسه/کوکی) → انجین روی شبکهٔ داخلی با `X-API-Key`. اگر `fetch` مستقیم از React به پورت `8081` کلید را در هدر بگذارد، در Network مرورگر لو می‌رود.

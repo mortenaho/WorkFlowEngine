@@ -59,7 +59,7 @@ public class HttpTests : IAsyncLifetime
             definitionKey = started.DefinitionKey,
             parentInstanceId = started.InstanceId,
             title = "بررسی",
-            to = new { kind = "users", ids = new[] { "bob", "cara" } },
+            to = new { kind = "users", ids = new[] { "mortenaho", "cara" } },
         });
         Assert.Equal(HttpStatusCode.Created, w.StatusCode);
         var refer = await w.Content.ReadFromJsonAsync<ReferResult>(JsonConfig.Options);
@@ -67,7 +67,7 @@ public class HttpTests : IAsyncLifetime
         Assert.False(string.IsNullOrEmpty(refer.InstanceId));
         Assert.Equal(2, refer.Tasks.Count);
 
-        w = await DoJson(HttpMethod.Get, "/v1/tasks?user=bob", "bob", null);
+        w = await DoJson(HttpMethod.Get, "/v1/tasks?user=mortenaho", "mortenaho", null);
         Assert.Equal(HttpStatusCode.OK, w.StatusCode);
         var inbox = await w.Content.ReadFromJsonAsync<List<WorkflowTask>>(JsonConfig.Options);
         Assert.NotNull(inbox);
@@ -79,9 +79,9 @@ public class HttpTests : IAsyncLifetime
         Assert.False(comp.AllCompleted);
         Assert.Equal(2, comp.Total);
 
-        var bobTask = refer.Tasks.First(t => t.AssigneeId == "bob").Id;
-        var caraTask = refer.Tasks.First(t => t.AssigneeId != "bob").Id;
-        w = await DoJson(HttpMethod.Post, $"/v1/tasks/{bobTask}/complete", "bob", new { note = "ok" });
+        var mortenahoTask = refer.Tasks.First(t => t.AssigneeId == "mortenaho").Id;
+        var caraTask = refer.Tasks.First(t => t.AssigneeId != "mortenaho").Id;
+        w = await DoJson(HttpMethod.Post, $"/v1/tasks/{mortenahoTask}/complete", "mortenaho", new { note = "ok" });
         Assert.Equal(HttpStatusCode.OK, w.StatusCode);
         var done = await w.Content.ReadFromJsonAsync<CompleteResult>(JsonConfig.Options);
         Assert.NotNull(done);
@@ -132,7 +132,7 @@ public class HttpTests : IAsyncLifetime
             definitionKey = started.DefinitionKey,
             parentInstanceId = started.InstanceId,
             from = "alice",
-            to = new { kind = "user", id = "bob" },
+            to = new { kind = "user", id = "mortenaho" },
         });
         Assert.Equal(HttpStatusCode.Created, w.StatusCode);
         var refer = await w.Content.ReadFromJsonAsync<ReferResult>(JsonConfig.Options);
@@ -188,14 +188,14 @@ public class HttpTests : IAsyncLifetime
         Assert.NotNull(refer?.Task);
         Assert.Equal(AssigneeKind.Group, refer.Task.AssigneeKind);
 
-        w = await DoJson(HttpMethod.Post, $"/v1/tasks/{refer.Task.Id}/complete", "bob", new { note = "nope" });
+        w = await DoJson(HttpMethod.Post, $"/v1/tasks/{refer.Task.Id}/complete", "mortenaho", new { note = "nope" });
         Assert.Equal(HttpStatusCode.BadRequest, w.StatusCode);
 
-        w = await DoJson(HttpMethod.Post, $"/v1/tasks/{refer.Task.Id}/claim", "bob", new { from = "bob" });
+        w = await DoJson(HttpMethod.Post, $"/v1/tasks/{refer.Task.Id}/claim", "mortenaho", new { from = "mortenaho" });
         Assert.Equal(HttpStatusCode.OK, w.StatusCode);
         var claimed = await w.Content.ReadFromJsonAsync<WorkflowTask>(JsonConfig.Options);
         Assert.Equal(TaskStatus.Claimed, claimed!.Status);
-        Assert.Equal("bob", claimed.ClaimedBy);
+        Assert.Equal("mortenaho", claimed.ClaimedBy);
 
         w = await DoJson(HttpMethod.Post, $"/v1/tasks/{refer.Task.Id}/claim", "cara", new { from = "cara" });
         Assert.Equal(HttpStatusCode.Conflict, w.StatusCode);
@@ -204,7 +204,7 @@ public class HttpTests : IAsyncLifetime
         var caraInbox = await w.Content.ReadFromJsonAsync<List<WorkflowTask>>(JsonConfig.Options);
         Assert.Empty(caraInbox!);
 
-        w = await DoJson(HttpMethod.Post, $"/v1/tasks/{refer.Task.Id}/unclaim", "bob", new { from = "bob" });
+        w = await DoJson(HttpMethod.Post, $"/v1/tasks/{refer.Task.Id}/unclaim", "mortenaho", new { from = "mortenaho" });
         Assert.Equal(HttpStatusCode.OK, w.StatusCode);
 
         w = await DoJson(HttpMethod.Get, "/v1/tasks?group=legal", "alice", null);
@@ -239,19 +239,19 @@ public class HttpTests : IAsyncLifetime
     public async Task ApiKeyRequiredWhenConfigured()
     {
         await using var locked = await StartWithKeys(["secret"]);
-        var req = new HttpRequestMessage(HttpMethod.Get, "/v1/tasks?user=bob");
-        req.Headers.TryAddWithoutValidation("X-Actor-Id", "bob");
+        var req = new HttpRequestMessage(HttpMethod.Get, "/v1/tasks?user=mortenaho");
+        req.Headers.TryAddWithoutValidation("X-Actor-Id", "mortenaho");
         var w = await locked.Client.SendAsync(req);
         Assert.Equal(HttpStatusCode.Unauthorized, w.StatusCode);
 
-        req = new HttpRequestMessage(HttpMethod.Get, "/v1/tasks?user=bob");
-        req.Headers.TryAddWithoutValidation("X-Actor-Id", "bob");
+        req = new HttpRequestMessage(HttpMethod.Get, "/v1/tasks?user=mortenaho");
+        req.Headers.TryAddWithoutValidation("X-Actor-Id", "mortenaho");
         req.Headers.TryAddWithoutValidation("X-API-Key", "secret");
         w = await locked.Client.SendAsync(req);
         Assert.Equal(HttpStatusCode.OK, w.StatusCode);
 
-        req = new HttpRequestMessage(HttpMethod.Get, "/v1/tasks?user=bob");
-        req.Headers.TryAddWithoutValidation("X-Actor-Id", "bob");
+        req = new HttpRequestMessage(HttpMethod.Get, "/v1/tasks?user=mortenaho");
+        req.Headers.TryAddWithoutValidation("X-Actor-Id", "mortenaho");
         req.Headers.TryAddWithoutValidation("Authorization", "Bearer secret");
         w = await locked.Client.SendAsync(req);
         Assert.Equal(HttpStatusCode.OK, w.StatusCode);
@@ -281,10 +281,10 @@ public class HttpTests : IAsyncLifetime
         {
             definitionKey = started!.DefinitionKey,
             parentInstanceId = started.InstanceId,
-            to = new { kind = "users", ids = new[] { "bob", "cara" } },
+            to = new { kind = "users", ids = new[] { "mortenaho", "cara" } },
         });
         var refer = await w.Content.ReadFromJsonAsync<ReferResult>(JsonConfig.Options);
-        var bobTask = refer!.Tasks.First(t => t.AssigneeId == "bob").Id;
+        var mortenahoTask = refer!.Tasks.First(t => t.AssigneeId == "mortenaho").Id;
         var caraTask = refer.Tasks.First(t => t.AssigneeId == "cara").Id;
 
         w = await DoJson(HttpMethod.Get, "/v1/users/alice/processes?state=open", "alice", null);
@@ -293,7 +293,7 @@ public class HttpTests : IAsyncLifetime
         Assert.Equal(1, mine.Total);
         Assert.Equal(started.InstanceId, mine.Instances[0].InstanceId);
 
-        w = await DoJson(HttpMethod.Post, $"/v1/tasks/{bobTask}/complete-and-end", "bob", new { note = "بسته شد" });
+        w = await DoJson(HttpMethod.Post, $"/v1/tasks/{mortenahoTask}/complete-and-end", "mortenaho", new { note = "بسته شد" });
         Assert.Equal(HttpStatusCode.OK, w.StatusCode);
         var ended = await w.Content.ReadFromJsonAsync<CompleteAndEndResult>(JsonConfig.Options);
         Assert.Equal(1, ended!.CancelledTasks);

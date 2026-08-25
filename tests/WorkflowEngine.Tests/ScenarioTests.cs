@@ -27,10 +27,10 @@ public class ScenarioTests
             ParentInstanceId = emp1.InstanceId,
             Title = "بررسی حقوقی",
             ToKind = AssigneeKind.User,
-            ToId = "bob",
+            ToId = "mortenaho",
         });
-        var bobInbox = await eng.PendingTasks("bob", "");
-        Assert.Single(bobInbox);
+        var mortenahoInbox = await eng.PendingTasks("mortenaho", "");
+        Assert.Single(mortenahoInbox);
 
         var groupRef = await eng.Refer("alice", new ReferInput
         {
@@ -39,19 +39,19 @@ public class ScenarioTests
             ToKind = AssigneeKind.Group,
             ToId = "legal",
         });
-        await Assert.ThrowsAsync<EngineException>(() => eng.CompleteTask(groupRef.Task!.Id, "bob", ""));
-        await eng.ClaimTask(groupRef.Task!.Id, "bob");
+        await Assert.ThrowsAsync<EngineException>(() => eng.CompleteTask(groupRef.Task!.Id, "mortenaho", ""));
+        await eng.ClaimTask(groupRef.Task!.Id, "mortenaho");
         var caraInbox = await eng.PendingTasks("cara", "");
         Assert.Empty(caraInbox);
-        await eng.CompleteTask(groupRef.Task.Id, "bob", "ok");
-        await eng.CompleteTask(legal.Task!.Id, "bob", "ok");
+        await eng.CompleteTask(groupRef.Task.Id, "mortenaho", "ok");
+        await eng.CompleteTask(legal.Task!.Id, "mortenaho", "ok");
 
         var multi = await eng.Refer("alice", new ReferInput
         {
             DefinitionKey = emp1.DefinitionKey,
             ParentInstanceId = emp1.InstanceId,
             ToKind = AssigneeKind.Users,
-            ToIds = ["bob", "cara", "dan"],
+            ToIds = ["mortenaho", "cara", "dan"],
         });
         var before = await eng.Completion(multi.InstanceId);
         Assert.False(before.AllCompleted);
