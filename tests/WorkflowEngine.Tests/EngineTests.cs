@@ -1,5 +1,3 @@
-using WorkflowEngine;
-
 namespace WorkflowEngine.Tests;
 
 public class EngineTests
@@ -330,6 +328,100 @@ public class EngineTests
             var list = await eng.ListByProcessKey("purchase");
             Assert.Equal(1, list.Total);
         }
+    }
+
+    [Fact]
+    public async Task CompleteAndEndClosesRootAndCancelsSiblings()
+    {
+        var eng = Fixtures.NewEngine();
+        var started = await eng.Start("purchase", "alice");
+        var bob = await eng.Refer("alice", new ReferInput
+        {
+            DefinitionKey = started.DefinitionKey,
+            ParentInstanceId = started.InstanceId,
+            ToKind = AssigneeKind.User,
+            ToId = "bob",
+        });
+        var cara = await eng.Refer("alice", new ReferInput
+        {
+            DefinitionKey = started.DefinitionKey,
+            ParentInstanceId = started.InstanceId,
+            ToKind = AssigneeKind.User,
+            ToId = "cara",
+        });
+
+        var ended = await eng.CompleteAndEnd(bob.Task!.Id, "bob", "بسته شد");
+        Assert.Equal(TaskStatus.Done, ended.Task.Status);
+        Assert.Equal(1, ended.CancelledTasks);
+        Assert.Equal(InstanceStatus.Completed, ended.Process.Status);
+        Assert.Equal(started.InstanceId, ended.Process.InstanceId);
+        Assert.Equal(0, ended.Process.TasksOpen);
+
+        var caraTask = await eng.GetTask(cara.Task!.Id);
+        Assert.Equal(TaskStatus.Cancelled, caraTask.Status);
+        Assert.Empty(await eng.PendingTasks("cara", ""));
+
+        var root = await eng.GetInstance(started.InstanceId);
+        Assert.Equal(InstanceStatus.Completed, root.Status);
+
+        var ex = await Assert.ThrowsAsync<EngineException>(() => eng.Refer("alice", new ReferInput
+        {
+            DefinitionKey = started.DefinitionKey,
+            ParentInstanceId = started.InstanceId,
+            ToKind = AssigneeKind.User,
+            ToId = "dan",
+        }));
+        Assert.Equal(EngineErrorKind.Invalid, ex.Kind);
+    }
+
+    [Fact]
+    public async Task ListUserProcessesByState()
+    {
+        var eng = Fixtures.NewEngine();
+        await eng.Start("leave", "alice");
+        var open = await eng.Start("purchase", "alice");
+        await eng.Refer("alice", new ReferInput
+        {
+            DefinitionKey = open.DefinitionKey,
+            ParentInstanceId = open.InstanceId,
+            ToKind = AssigneeKind.User,
+            ToId = "bob",
+        });
+        var closing = await eng.Start("travel", "alice");
+        var refer = await eng.Refer("alice", new ReferInput
+        {
+            DefinitionKey = closing.DefinitionKey,
+            ParentInstanceId = closing.InstanceId,
+            ToKind = AssigneeKind.User,
+            ToId = "bob",
+        });
+        await eng.CompleteAndEnd(refer.Task!.Id, "bob", "ok");
+        await eng.Start("purchase", "bob");
+
+        var all = await eng.ListUserProcesses("alice");
+        Assert.Equal("alice", all.User);
+        Assert.Equal(1, all.NotStarted);
+        Assert.Equal(1, all.Open);
+        Assert.Equal(1, all.Closed);
+        Assert.Equal(3, all.Total);
+
+        var notStarted = await eng.ListUserProcesses("alice", ProcessState.NotStarted);
+        Assert.Equal(1, notStarted.Total);
+        Assert.Equal("leave", notStarted.Instances[0].ProcessKey);
+        Assert.Equal(0, notStarted.Instances[0].TaskTotal);
+
+        var running = await eng.ListUserProcesses("alice", ProcessState.Open);
+        Assert.Equal(1, running.Total);
+        Assert.Equal(open.InstanceId, running.Instances[0].InstanceId);
+
+        var closed = await eng.ListUserProcesses("alice", ProcessState.Closed);
+        Assert.Equal(1, closed.Total);
+        Assert.Equal(InstanceStatus.Completed, closed.Instances[0].Status);
+
+        var bob = await eng.ListUserProcesses("bob");
+        Assert.Equal(1, bob.NotStarted);
+        Assert.Equal(0, bob.Open);
+        Assert.Equal(0, bob.Closed);
     }
 
     private static async Task<(bool Ok, EngineErrorKind? Kind, WorkflowTask? Task)> Wrap(Task<WorkflowTask> task)

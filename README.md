@@ -1,6 +1,6 @@
 # Workflow Engine
 
-سرویس ارجاع و گردش کار روی ASP.NET Core (`net10.0`). گراف BPMN ندارد؛ اپ شما چهار سرویس را صدا می‌زند.
+سرویس ارجاع و گردش کار روی ASP.NET Core (`net10.0`) با Clean Architecture. گراف BPMN ندارد؛ اپ شما چهار سرویس را صدا می‌زند.
 
 ```bash
 dotnet run --project src/WorkflowEngine.Server
@@ -63,6 +63,21 @@ curl -s http://127.0.0.1:8081/v1/instances/REFERRAL_INSTANCE/completion
 
 `allCompleted` در پاسخ `POST /v1/tasks/{id}/complete` هم هست.
 
+**۵. تکمیل و پایان فرایند** — تسک را تمام می‌کند و کل پرونده را می‌بندد (بقیهٔ تسک‌های باز `cancelled`):
+
+```bash
+curl -s -X POST http://127.0.0.1:8081/v1/tasks/TASK_ID/complete-and-end \
+  -H 'Content-Type: application/json' -H 'X-Actor-Id: bob' \
+  -d '{"note":"پرونده بسته شد"}'
+```
+
+**۶. فرایندهای کاربر** — شمارش باز / بسته / استارت‌نشده و لیست با فیلتر `state`:
+
+```bash
+curl -s 'http://127.0.0.1:8081/v1/users/alice/processes'
+curl -s 'http://127.0.0.1:8081/v1/users/alice/processes?state=open'
+```
+
 ## Docker
 
 ```bash
@@ -73,9 +88,8 @@ docker compose up --build
 |--------|---------|------|
 | `ADDR` | `:8081` | آدرس listen |
 | `DATABASE_URL` | خالی | Postgres؛ وگرنه حافظه |
-| `WF_USERS` | `alice,bob,cara,dan,manager,ceo` | کاربران |
-| `WF_GROUP_LEGAL` | `bob,cara` | اعضای `legal` |
-| `WF_GROUP_FINANCE` | `dan,cara` | اعضای `finance` |
+| `WF_USERS` | خالی | کاربران دایرکتوری استاتیک |
+| `WF_GROUP_<id>` | — | اعضای گروه `id` (مثلاً `WF_GROUP_legal=bob,cara`) |
 | `WF_API_KEYS` | خالی | اگر ست شود همهٔ مسیرها جز `/health` و swagger کلید می‌خواهند |
 
-جزئیات: [docs/usage.md](docs/usage.md)
+جزئیات: [docs/usage.md](docs/usage.md) · دیتابیس: [docs/database.md](docs/database.md)

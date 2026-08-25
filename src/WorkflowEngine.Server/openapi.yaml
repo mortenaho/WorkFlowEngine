@@ -3,7 +3,7 @@ info:
   title: Workflow Engine
   version: "2.0"
   description: |
-    سرویس‌بیس: شروع فرایند، ارجاع به شخص یا گروه، کارتابل، وضعیت تکمیل چندنفره.
+    سرویس‌بیس: شروع فرایند، ارجاع، کارتابل، تکمیل تسک، پایان فرایند، فرایندهای کاربر.
 
     بازیگر: هدر `X-Actor-Id`. پورت پیش‌فرض `8081`.
 servers:
@@ -229,30 +229,6 @@ paths:
                 items:
                   $ref: "#/components/schemas/Task"
 
-  /v1/inbox:
-    get:
-      tags: [Tasks]
-      summary: کارتابل (همان GET /v1/tasks)
-      parameters:
-        - name: user
-          in: query
-          schema:
-            type: string
-            example: bob
-        - name: group
-          in: query
-          schema:
-            type: string
-            example: legal
-      responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Task"
-
   /v1/tasks/{id}:
     get:
       tags: [Tasks]
@@ -354,6 +330,66 @@ paths:
         "403":
           $ref: "#/components/responses/Error"
         "404":
+          $ref: "#/components/responses/Error"
+
+  /v1/tasks/{id}/complete-and-end:
+    post:
+      tags: [Tasks]
+      summary: تکمیل تسک و پایان فرایند
+      description: |
+        تسک را مثل complete تمام می‌کند، بقیهٔ تسک‌های باز همان فرایند را `cancelled` می‌کند،
+        و اینستنس ریشه را `completed` می‌گذارد. ارجاع بعدی روی همان ریشه خطا می‌دهد.
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompleteRequest"
+            example:
+              from: bob
+              note: پرونده بسته شد
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompleteAndEndResult"
+        "400":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+
+  /v1/users/{user}/processes:
+    get:
+      tags: [Process]
+      summary: فرایندهای یک کاربر با شمارش و فیلتر
+      description: |
+        فقط اینستنس‌های **start** که `initiator` همان کاربر است.
+        `state`: `open` (ارجاع خورده و هنوز بسته نشده)، `closed` (با complete-and-end تمام شده)،
+        `notStarted` (start شده ولی هنوز ارجاعی ندارد).
+        بدون `state` هر سه دسته در `instances` می‌آید. شمارش‌ها همیشه برمی‌گردد.
+      parameters:
+        - name: user
+          in: path
+          required: true
+          schema:
+            type: string
+            example: alice
+        - name: state
+          in: query
+          schema:
+            type: string
+            enum: [open, closed, notStarted]
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProcessList"
+        "400":
           $ref: "#/components/responses/Error"
 
   /v1/instances/{id}:
@@ -565,7 +601,7 @@ components:
           type: string
         status:
           type: string
-          enum: [open, claimed, done]
+          enum: [open, claimed, done, cancelled]
         note:
           type: string
         createdAt:
@@ -602,6 +638,17 @@ components:
           $ref: "#/components/schemas/Task"
         completion:
           $ref: "#/components/schemas/Completion"
+    CompleteAndEndResult:
+      type: object
+      properties:
+        task:
+          $ref: "#/components/schemas/Task"
+        completion:
+          $ref: "#/components/schemas/Completion"
+        process:
+          $ref: "#/components/schemas/ProcessInstanceDetail"
+        cancelledTasks:
+          type: integer
     Completion:
       type: object
       properties:
@@ -649,6 +696,26 @@ components:
       properties:
         processKey:
           type: string
+        total:
+          type: integer
+        instances:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProcessInstanceDetail"
+    UserProcessList:
+      type: object
+      properties:
+        user:
+          type: string
+        state:
+          type: string
+          enum: [open, closed, notStarted]
+        open:
+          type: integer
+        closed:
+          type: integer
+        notStarted:
+          type: integer
         total:
           type: integer
         instances:

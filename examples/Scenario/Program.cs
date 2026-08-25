@@ -1,4 +1,6 @@
-using WorkflowEngine;
+using WorkflowEngine.Application;
+using WorkflowEngine.Domain;
+using WorkflowEngine.Infrastructure;
 
 var dir = new StaticDirectory(
     ["alice", "bob", "cara", "dan"],

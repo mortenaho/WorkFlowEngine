@@ -2,7 +2,6 @@ using System.Net;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.TestHost;
-using WorkflowEngine;
 using WorkflowEngine.Server;
 
 namespace WorkflowEngine.Tests;
@@ -16,8 +15,9 @@ public class HttpTests : IAsyncLifetime
     {
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
+        builder.Services.AddWorkflow(Fixtures.NewEngine(), []);
         _app = builder.Build();
-        _app.UseWorkflow(Fixtures.NewEngine(), []);
+        _app.UseWorkflow();
         await _app.StartAsync();
         _client = _app.GetTestClient();
     }
@@ -255,12 +255,67 @@ public class HttpTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, w.StatusCode);
     }
 
+    [Fact]
+    public async Task HttpCompleteAndEndAndUserProcesses()
+    {
+        var w = await DoJson(HttpMethod.Post, "/v1/processes/start", "alice", new
+        {
+            processKey = "purchase",
+            initiator = "alice",
+        });
+        var started = await w.Content.ReadFromJsonAsync<StartResult>(JsonConfig.Options);
+
+        w = await DoJson(HttpMethod.Get, "/v1/users/alice/processes", "alice", null);
+        var mine = await w.Content.ReadFromJsonAsync<UserProcessList>(JsonConfig.Options);
+        Assert.Equal(1, mine!.NotStarted);
+        Assert.Equal(0, mine.Open);
+        Assert.Equal(1, mine.Total);
+
+        w = await DoJson(HttpMethod.Post, "/v1/referrals", "alice", new
+        {
+            definitionKey = started!.DefinitionKey,
+            parentInstanceId = started.InstanceId,
+            to = new { kind = "users", ids = new[] { "bob", "cara" } },
+        });
+        var refer = await w.Content.ReadFromJsonAsync<ReferResult>(JsonConfig.Options);
+        var bobTask = refer!.Tasks.First(t => t.AssigneeId == "bob").Id;
+        var caraTask = refer.Tasks.First(t => t.AssigneeId == "cara").Id;
+
+        w = await DoJson(HttpMethod.Get, "/v1/users/alice/processes?state=open", "alice", null);
+        mine = await w.Content.ReadFromJsonAsync<UserProcessList>(JsonConfig.Options);
+        Assert.Equal(1, mine!.Open);
+        Assert.Equal(1, mine.Total);
+        Assert.Equal(started.InstanceId, mine.Instances[0].InstanceId);
+
+        w = await DoJson(HttpMethod.Post, $"/v1/tasks/{bobTask}/complete-and-end", "bob", new { note = "بسته شد" });
+        Assert.Equal(HttpStatusCode.OK, w.StatusCode);
+        var ended = await w.Content.ReadFromJsonAsync<CompleteAndEndResult>(JsonConfig.Options);
+        Assert.Equal(1, ended!.CancelledTasks);
+        Assert.Equal(InstanceStatus.Completed, ended.Process.Status);
+
+        w = await DoJson(HttpMethod.Get, $"/v1/tasks/{caraTask}", "cara", null);
+        var cancelled = await w.Content.ReadFromJsonAsync<WorkflowTask>(JsonConfig.Options);
+        Assert.Equal(TaskStatus.Cancelled, cancelled!.Status);
+
+        w = await DoJson(HttpMethod.Get, "/v1/tasks?user=cara", "cara", null);
+        var caraInbox = await w.Content.ReadFromJsonAsync<List<WorkflowTask>>(JsonConfig.Options);
+        Assert.Empty(caraInbox!);
+
+        w = await DoJson(HttpMethod.Get, "/v1/users/alice/processes?state=closed", "alice", null);
+        mine = await w.Content.ReadFromJsonAsync<UserProcessList>(JsonConfig.Options);
+        Assert.Equal(1, mine!.Closed);
+        Assert.Equal(1, mine.Total);
+        Assert.Equal(0, mine.Open);
+        Assert.Equal(0, mine.NotStarted);
+    }
+
     private static async Task<Hosted> StartWithKeys(string[] keys)
     {
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
+        builder.Services.AddWorkflow(Fixtures.NewEngine(), keys);
         var app = builder.Build();
-        app.UseWorkflow(Fixtures.NewEngine(), keys);
+        app.UseWorkflow();
         await app.StartAsync();
         return new Hosted(app, app.GetTestClient());
     }

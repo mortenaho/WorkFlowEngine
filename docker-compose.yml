@@ -24,9 +24,6 @@ services:
       ADDR: ":8080"
       ASPNETCORE_URLS: http://0.0.0.0:8080
       DATABASE_URL: postgres://workflow:workflow@postgres:5432/workflow?sslmode=disable
-      WF_USERS: alice,bob,cara,dan,manager,ceo
-      WF_GROUP_LEGAL: bob,cara
-      WF_GROUP_FINANCE: dan,cara
     depends_on:
       postgres:
         condition: service_healthy

@@ -2,8 +2,7 @@
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
-COPY src/WorkflowEngine/ ./src/WorkflowEngine/
-COPY src/WorkflowEngine.Server/ ./src/WorkflowEngine.Server/
+COPY src/ ./src/
 RUN dotnet publish src/WorkflowEngine.Server/WorkflowEngine.Server.csproj -c Release -o /out
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0

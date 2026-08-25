@@ -17,11 +17,16 @@
 
   <ItemGroup>
     <Using Include="Xunit" />
+    <Using Include="WorkflowEngine.Application" />
+    <Using Include="WorkflowEngine.Domain" />
+    <Using Include="WorkflowEngine.Infrastructure" />
+    <Using Include="WorkflowEngine.Domain.TaskStatus" Alias="TaskStatus" />
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\WorkflowEngine\WorkflowEngine.csproj" />
+    <ProjectReference Include="..\..\src\WorkflowEngine.Application\WorkflowEngine.Application.csproj" />
+    <ProjectReference Include="..\..\src\WorkflowEngine.Infrastructure\WorkflowEngine.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\WorkflowEngine.Server\WorkflowEngine.Server.csproj" />
   </ItemGroup>
 

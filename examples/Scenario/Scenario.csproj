@@ -8,7 +8,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\WorkflowEngine\WorkflowEngine.csproj" />
+    <ProjectReference Include="..\..\src\WorkflowEngine.Application\WorkflowEngine.Application.csproj" />
+    <ProjectReference Include="..\..\src\WorkflowEngine.Infrastructure\WorkflowEngine.Infrastructure.csproj" />
+    <Using Include="WorkflowEngine.Application" />
+    <Using Include="WorkflowEngine.Domain" />
+    <Using Include="WorkflowEngine.Infrastructure" />
   </ItemGroup>
 
 </Project>

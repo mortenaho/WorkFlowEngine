@@ -49,3 +49,22 @@ echo
 echo "== inbox group legal =="
 json alice "$BASE/v1/tasks?group=legal"
 echo
+
+echo "== alice processes (open) =="
+json alice "$BASE/v1/users/alice/processes?state=open"
+echo
+
+echo "== new process: complete-and-end =="
+START2=$(json alice -X POST "$BASE/v1/processes/start" \
+  -d '{"processKey":"purchase","initiator":"alice"}')
+ROOT2=$(echo "$START2" | python3 -c 'import json,sys; print(json.load(sys.stdin)["instanceId"])')
+REF2=$(json alice -X POST "$BASE/v1/referrals" -d "$(cat <<EOF
+{"definitionKey":"$DEF","parentInstanceId":"$ROOT2","title":"تأیید نهایی","to":{"kind":"users","ids":["bob","cara"]}}
+EOF
+)")
+END_TASK=$(echo "$REF2" | python3 -c 'import json,sys; d=json.load(sys.stdin);
+print(next(t["id"] for t in d["tasks"] if t["assigneeId"]=="bob"))')
+json bob -X POST "$BASE/v1/tasks/$END_TASK/complete-and-end" -d '{"note":"پرونده بسته شد"}'
+echo
+json alice "$BASE/v1/users/alice/processes?state=closed"
+echo

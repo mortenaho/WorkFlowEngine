@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\WorkflowEngine.Domain\WorkflowEngine.Domain.csproj" />
+  </ItemGroup>
+</Project>

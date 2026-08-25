@@ -1,5 +1,3 @@
-using WorkflowEngine;
-
 namespace WorkflowEngine.Tests;
 
 internal static class Fixtures

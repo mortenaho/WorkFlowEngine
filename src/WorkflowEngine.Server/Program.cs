@@ -1,4 +1,5 @@
-using WorkflowEngine;
+using WorkflowEngine.Application;
+using WorkflowEngine.Infrastructure;
 using WorkflowEngine.Server;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -27,13 +28,7 @@ if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ASPNETCORE_URLS")))
     builder.WebHost.UseUrls(urls);
 }
 
-var directory = new StaticDirectory(
-    SplitCsv(Env("WF_USERS", "alice,bob,cara,dan,manager,ceo")),
-    new Dictionary<string, IReadOnlyList<string>>
-    {
-        ["legal"] = SplitCsv(Env("WF_GROUP_LEGAL", "bob,cara")),
-        ["finance"] = SplitCsv(Env("WF_GROUP_FINANCE", "dan,cara")),
-    });
+var directory = new StaticDirectory(SplitCsv(Env("WF_USERS", "")), GroupsFromEnv());
 
 IStore store = new MemoryStore();
 PostgresStore? postgres = null;
@@ -51,9 +46,10 @@ else
 
 var engine = new Engine(store, directory);
 var apiKeys = SplitCsv(Env("WF_API_KEYS", ""));
+builder.Services.AddWorkflow(engine, apiKeys);
 
 var app = builder.Build();
-app.UseWorkflow(engine, apiKeys);
+app.UseWorkflow();
 
 var listen = Environment.GetEnvironmentVariable("ASPNETCORE_URLS")
              ?? Environment.GetEnvironmentVariable("ADDR")
@@ -79,6 +75,23 @@ static string Env(string key, string fallback)
 
 static IReadOnlyList<string> SplitCsv(string s) =>
     s.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+
+static Dictionary<string, IReadOnlyList<string>> GroupsFromEnv()
+{
+    const string prefix = "WF_GROUP_";
+    var groups = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
+    var variables = Environment.GetEnvironmentVariables();
+    foreach (var keyObj in variables.Keys)
+    {
+        if (keyObj is not string key
+            || !key.StartsWith(prefix, StringComparison.Ordinal)
+            || key.Length == prefix.Length)
+            continue;
+        var id = key[prefix.Length..].ToLowerInvariant();
+        groups[id] = SplitCsv(variables[keyObj]?.ToString() ?? "");
+    }
+    return groups;
+}
 
 static async Task<PostgresStore> OpenPostgres(string dsn)
 {
