@@ -2,7 +2,7 @@
 
 # نمونه‌ها و سناریوها
 
-اجرای سرور REST با دستور `dotnet run --project src/WorkflowEngine.Server` روی پورت `:8081`:
+اجرای سرور REST با دستور `dotnet run --project src/WorkflowEngine.Server` روی پورت `:8081` (پروفایل پیش‌فرض `Development` است و بدون `WF_API_KEYS` کار می‌کند). اگر سرور را با Docker یا محیط Production اجرا می‌کنید، کلید را در `WF_API_KEY` یا `WF_API_KEYS` بگذارید تا `curl.sh` آن را به‌صورت `X-API-Key` بفرستد.
 
 <div dir="ltr">
 

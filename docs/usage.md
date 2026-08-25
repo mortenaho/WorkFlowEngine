@@ -101,7 +101,7 @@ var open = await eng.ListUserProcesses("alice", "open");
 
 </div>
 
-در محیط پروداکشن می‌توانید رابط `IDirectory` را به سرویس هویت سازمانی خود (مانند Active Directory / LDAP یا SSO) متصل کنید:
+در محیط پروداکشن می‌توانید رابط `IDirectory` را به سرویس هویت سازمانی خود (مانند Active Directory / LDAP یا SSO/Keycloak) متصل کنید. این رابط وظیفهٔ بررسی وجود کاربر و تعیین گروه‌ها و اعضا را برعهده دارد:
 
 <div dir="ltr">
 
@@ -116,15 +116,163 @@ public interface IDirectory
 
 </div>
 
+در ادامه دو نمونه پیاده‌سازی کاربردی برای محیط‌های سازمانی ارائه شده است:
+
+### نمونهٔ ۱: پیاده‌سازی مبتنی بر SSO و سرویس‌های وب (مانند Keycloak یا REST Identity API)
+
+در این سناریو، استعلام‌ها از طریق APIهای احراز هویت سازمان دریافت می‌شوند و جهت بهینه‌سازی کارایی و کاهش بار شبکه از مکانیزم کش درون‌حافظه‌ای (`IMemoryCache`) استفاده می‌گردد:
+
+<div dir="ltr">
+
+```csharp
+using System.Net.Http.Json;
+using Microsoft.Extensions.Caching.Memory;
+using WorkflowEngine.Application;
+
+public sealed class HttpIdentityDirectory : IDirectory
+{
+    private readonly HttpClient _http;
+    private readonly IMemoryCache _cache;
+    private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(10);
+
+    public HttpIdentityDirectory(HttpClient http, IMemoryCache cache)
+    {
+        _http = http;
+        _cache = cache;
+    }
+
+    public async Task<bool> UserExists(string userId, CancellationToken cancellationToken = default)
+    {
+        return await _cache.GetOrCreateAsync($"user:exists:{userId}", async entry =>
+        {
+            entry.AbsoluteExpirationRelativeToNow = CacheDuration;
+            var response = await _http.GetAsync($"api/v1/users/{Uri.EscapeDataString(userId)}", cancellationToken);
+            return response.IsSuccessStatusCode;
+        });
+    }
+
+    public async Task<IReadOnlyList<string>> GroupMembers(string groupId, CancellationToken cancellationToken = default)
+    {
+        return await _cache.GetOrCreateAsync($"group:members:{groupId}", async entry =>
+        {
+            entry.AbsoluteExpirationRelativeToNow = CacheDuration;
+            var response = await _http.GetFromJsonAsync<List<string>>($"api/v1/groups/{Uri.EscapeDataString(groupId)}/members", cancellationToken);
+            return (IReadOnlyList<string>)(response ?? []);
+        }) ?? [];
+    }
+
+    public async Task<IReadOnlyList<string>> UserGroups(string userId, CancellationToken cancellationToken = default)
+    {
+        return await _cache.GetOrCreateAsync($"user:groups:{userId}", async entry =>
+        {
+            entry.AbsoluteExpirationRelativeToNow = CacheDuration;
+            var response = await _http.GetFromJsonAsync<List<string>>($"api/v1/users/{Uri.EscapeDataString(userId)}/groups", cancellationToken);
+            return (IReadOnlyList<string>)(response ?? []);
+        }) ?? [];
+    }
+}
+```
+
+</div>
+
+### نمونهٔ ۲: پیاده‌سازی مبتنی بر Active Directory / LDAP
+
+در صورت استفاده از اکتیو دایرکتوری در محیط ویندوزی/سازمانی، می‌توانید با استفاده از کلاس‌های `System.DirectoryServices.AccountManagement` (یا پروتکل LDAP) مستقیماً اطلاعات را استعلام نمایید:
+
+<div dir="ltr">
+
+```csharp
+using System.DirectoryServices.AccountManagement;
+using WorkflowEngine.Application;
+
+public sealed class ActiveDirectoryService : IDirectory
+{
+    private readonly string _domain;
+    private readonly string? _container;
+
+    public ActiveDirectoryService(string domain, string? container = null)
+    {
+        _domain = domain;
+        _container = container;
+    }
+
+    public Task<bool> UserExists(string userId, CancellationToken cancellationToken = default)
+    {
+        using var ctx = new PrincipalContext(ContextType.Domain, _domain, _container);
+        using var user = UserPrincipal.FindByIdentity(ctx, IdentityType.SamAccountName, userId);
+        return Task.FromResult(user is not null && user.Enabled == true);
+    }
+
+    public Task<IReadOnlyList<string>> GroupMembers(string groupId, CancellationToken cancellationToken = default)
+    {
+        using var ctx = new PrincipalContext(ContextType.Domain, _domain, _container);
+        using var group = GroupPrincipal.FindByIdentity(ctx, IdentityType.SamAccountName, groupId);
+        if (group is null)
+            return Task.FromResult<IReadOnlyList<string>>([]);
+
+        var members = group.GetMembers(recursive: true)
+            .OfType<UserPrincipal>()
+            .Where(u => u.Enabled == true)
+            .Select(u => u.SamAccountName)
+            .Where(name => !string.IsNullOrEmpty(name))
+            .ToList();
+
+        return Task.FromResult<IReadOnlyList<string>>(members);
+    }
+
+    public Task<IReadOnlyList<string>> UserGroups(string userId, CancellationToken cancellationToken = default)
+    {
+        using var ctx = new PrincipalContext(ContextType.Domain, _domain, _container);
+        using var user = UserPrincipal.FindByIdentity(ctx, IdentityType.SamAccountName, userId);
+        if (user is null)
+            return Task.FromResult<IReadOnlyList<string>>([]);
+
+        var groups = user.GetAuthorizationGroups()
+            .Select(g => g.SamAccountName)
+            .Where(name => !string.IsNullOrEmpty(name))
+            .ToList();
+
+        return Task.FromResult<IReadOnlyList<string>>(groups);
+    }
+}
+```
+
+</div>
+
+### نحوهٔ ثبت و استفاده در `Program.cs` (تزریق وابستگی‌ها)
+
+برای جایگزینی `StaticDirectory` با پیاده‌سازی سازمانی در ریشهٔ برنامه (`Program.cs`):
+
+<div dir="ltr">
+
+```csharp
+// نمونه با تزریق وابستگی HttpClient و IMemoryCache:
+builder.Services.AddMemoryCache();
+builder.Services.AddHttpClient<IDirectory, HttpIdentityDirectory>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Identity:BaseUrl"] ?? "https://iam.company.local");
+    client.DefaultRequestHeaders.Add("Authorization", $"Bearer {builder.Configuration["Identity:ApiKey"]}");
+});
+
+// یا در صورت نمونه‌سازی مستقیم ActiveDirectory:
+// IDirectory directory = new ActiveDirectoryService("corp.company.local", "DC=corp,DC=company,DC=local");
+
+// دریافت دایرکتوری و راه‌اندازی Engine:
+var directory = app.Services.GetRequiredService<IDirectory>();
+var engine = new Engine(store, directory);
+```
+
+</div>
+
 ---
 
 ## ۳. راهنمای وب‌سرویس REST API
 
 آدرس پایه: `http://localhost:8081`.  
 هدرهای اصلی:
-- `X-Actor-Id`: شناسهٔ کاربر انجام‌دهندهٔ درخواست (اجباری در اکثر عملیات).
+- `X-Actor-Id`: شناسهٔ کاربر انجام‌دهندهٔ درخواست (اجباری در اکثر عملیات). این هدر لاگین نیست و انجین توکن صادر نمی‌کند.
 - `X-Tenant-Id`: شناسهٔ سازمان جهت جداسازی داده‌ها (اختیاری؛ پیش‌فرض: `default`).
-- `X-API-Key`: کلید امنیتی دسترسی (در صورت فعال بودن متغیر `WF_API_KEYS`).
+- `X-API-Key`: کلید مشترک سرویس برای بک‌اند یا API Gateway. در پروداکشن اجباری است (متغیر `WF_API_KEYS`). مسیرهای `/health` و مستندات مستثنی هستند.
 
 ### ۱. شروع فرایند (Start)
 
@@ -299,11 +447,16 @@ GET /v1/instances/{referralInstanceId}/completion
 
 ## ۴. پیکربندی محیط و Docker
 
+اگر `ASPNETCORE_ENVIRONMENT` برابر `Development` نباشد و `WF_API_KEYS` خالی باشد، سرویس هنگام شروع متوقف می‌شود. این کلید توکن لاگین کاربر نیست؛ یک راز مشترک است که برنامهٔ شما (یا Gateway) با هر درخواست می‌فرستد. کاربر نهایی به خودِ انجین لاگین نمی‌کند.
+
 <div dir="ltr">
 
 ```bash
+cp .env.example .env
 docker compose up --build
 curl -s http://localhost:8081/health
+curl -s -H 'X-API-Key: local-dev-key' -H 'X-Actor-Id: alice' \
+  http://localhost:8081/v1/users/alice/processes
 ```
 
 </div>
@@ -313,7 +466,8 @@ curl -s http://localhost:8081/health
 | `DATABASE_URL` | رشتهٔ اتصال به پایگاه دادهٔ Postgres؛ در صورت عدم تنظیم، داده‌ها در حافظه موقت نگهداری می‌شوند |
 | `ADDR` | پورت و آدرس دریافت درخواست‌ها (پیش‌فرض: `:8081`) |
 | `WF_USERS` / `WF_GROUP_<id>` | تنظیمات کاربران و اعضای گروه‌ها در دایرکتوری ایستا |
-| `WF_API_KEYS` | کلیدهای احراز هویت API؛ در صورت تنظیم، درخواست‌ها ملزم به ارسال کلید معتبر هستند |
+| `WF_API_KEYS` | کلید(های) مشترک API (جداشده با ویرگول). خارج از Development اجباری است. درخواست‌ها باید `X-API-Key` یا `Authorization: Bearer` معتبر بفرستند |
+| `ASPNETCORE_ENVIRONMENT` | در `Development` می‌توان بدون کلید کار کرد؛ در `Production` بدون `WF_API_KEYS` سرویس بالا نمی‌آید |
 
 در صورت عدم استفاده از `DATABASE_URL`، با خاموش شدن سرویس داده‌ها پاک می‌شوند. فایل `docker-compose.yml` به‌طور پیش‌فرض سرویس Postgres را پیکربندی و متصل می‌کند.
 
