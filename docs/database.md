@@ -76,7 +76,7 @@ Compose همین مقدار را به سرویس `engine` می‌دهد. کار�
 <div dir="ltr">
 
 ```
-tenant
+سازمان (tenant_id)
   └── definition          (یک نوع فرایند؛ مثلاً purchase)
         └── instance ریشه  (خروجی Start؛ parent_instance_id = '')
               └── instance فرزند  (هر Refer یک ردیف جدید)
@@ -155,7 +155,7 @@ erDiagram
 
 ---
 
-## ۴. شناسه‌ها، زمان، و چندمستأجری
+## ۴. شناسه‌ها، زمان، و جداسازی سازمان‌ها
 
 ### شناسه
 
@@ -165,17 +165,17 @@ erDiagram
 
 همهٔ زمان‌ها `TIMESTAMPTZ` هستند. موتور با ساعت UTC کار می‌کند. هنگام خواندن، اگر درایور `DateTimeKind` را Unspecified برگرداند، `PostgresStore` آن را UTC فرض می‌کند.
 
-### مستأجر (`tenant_id`)
+### سازمان (`tenant_id`)
 
 هر سه جدول ستون `tenant_id TEXT NOT NULL DEFAULT 'default'` دارند.
 
 - خالی یا null در کد به `'default'` نرمال می‌شود (`Tenant.Normalize`).
 - در REST از هدر `X-Tenant-Id` می‌آید؛ بدون هدر همان `default` است.
 - جداسازی در Application است، نه Row Level Security پستگرس.
-- `GetInstance` / `GetTask` اگر `tenant_id` ردیف با مستأجر جاری فرق کند `ForbiddenTenant` می‌دهند.
+- `GetInstance` / `GetTask` اگر `tenant_id` ردیف با سازمان جاری فرق کند `ForbiddenTenant` می‌دهند.
 - ایندکس لیست فرایندها `tenant_id` را در کلید دارند.
 
-مستأجر جدول جدا ندارد؛ فقط یک برچسب روی ردیف‌هاست.
+سازمان جدول جدا ندارد؛ فقط یک برچسب روی ردیف‌هاست.
 
 ---
 
@@ -186,7 +186,7 @@ erDiagram
 | ستون | نوع | پیش‌فرض | نقش |
 |------|-----|---------|-----|
 | `id` | `TEXT` PK | — | شناسهٔ پایدار تعریف |
-| `tenant_id` | `TEXT NOT NULL` | `'default'` | جداسازی مستأجر |
+| `tenant_id` | `TEXT NOT NULL` | `'default'` | شناسهٔ سازمان |
 | `key` | `TEXT NOT NULL` | — | کلید کسب‌وکاری (`purchase`). در API همان `processKey` / `definitionKey` است |
 | `name` | `TEXT NOT NULL` | `''` | نام نمایشی؛ اگر خالی ثبت شود برابر `key` می‌شود |
 | `version` | `INT NOT NULL` | `1` | رزرو؛ موتور نسخه را مدیریت نمی‌کند |
@@ -224,7 +224,7 @@ ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name
 | ستون | نوع | پیش‌فرض | نقش |
 |------|-----|---------|-----|
 | `id` | `TEXT` PK | — | `instanceId` در API |
-| `tenant_id` | `TEXT NOT NULL` | `'default'` | مستأجر |
+| `tenant_id` | `TEXT NOT NULL` | `'default'` | شناسهٔ سازمان |
 | `definition_id` | `TEXT NOT NULL` | — | FK منطقی به `definitions.id` |
 | `definition_key` | `TEXT NOT NULL` | — | کپی `definitions.key` برای کوئری بدون JOIN |
 | `parent_instance_id` | `TEXT NOT NULL` | `''` | اینستنس ریشهٔ استارت. ریشه = رشتهٔ خالی، نه NULL |
@@ -293,7 +293,7 @@ UPDATE instances SET status=$2, vars=$3::jsonb, updated_at=$4 WHERE id=$1
 | ستون | نوع | پیش‌فرض | نقش |
 |------|-----|---------|-----|
 | `id` | `TEXT` PK | — | `taskId` در API |
-| `tenant_id` | `TEXT NOT NULL` | `'default'` | مستأجر |
+| `tenant_id` | `TEXT NOT NULL` | `'default'` | شناسهٔ سازمان |
 | `instance_id` | `TEXT NOT NULL` | — | اینستنس ارجاع (نه لزوماً ریشه) |
 | `parent_instance_id` | `TEXT NOT NULL` | `''` | کپی والد برای لیست تسک‌های یک فرایند ریشه بدون JOIN |
 | `definition_key` | `TEXT NOT NULL` | `''` | کپی کلید فرایند |

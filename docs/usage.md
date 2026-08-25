@@ -113,7 +113,7 @@ public interface IDirectory
 
 ## ۳. REST
 
-پایه: `http://localhost:8081`. هویت: `X-Actor-Id`. اختیاری: `X-Tenant-Id`، `X-API-Key` (اگر `WF_API_KEYS` ست باشد).
+پایه: `http://localhost:8081`. هویت: `X-Actor-Id`. اختیاری: `X-Tenant-Id` (سازمان)، `X-API-Key` (اگر `WF_API_KEYS` ست باشد).
 
 ### شروع
 
