@@ -5,6 +5,8 @@ public sealed class StaticDirectory : IDirectory
     private readonly HashSet<string> _users;
     private readonly Dictionary<string, string[]> _groups;
 
+    public bool EnforcesMembership => true;
+
     public StaticDirectory(IEnumerable<string> users, IReadOnlyDictionary<string, IReadOnlyList<string>> groups)
     {
         _users = new HashSet<string>(users);
@@ -30,5 +32,11 @@ public sealed class StaticDirectory : IDirectory
                 outList.Add(gid);
         }
         return Task.FromResult<IReadOnlyList<string>>(outList);
+    }
+
+    public async Task<bool> IsMember(string userId, string groupId, CancellationToken cancellationToken = default)
+    {
+        var members = await GroupMembers(groupId, cancellationToken);
+        return members.Contains(userId);
     }
 }

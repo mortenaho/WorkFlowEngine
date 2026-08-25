@@ -31,7 +31,14 @@ if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ASPNETCORE_URLS")))
 var apiKeys = SplitCsv(Env("WF_API_KEYS", ""));
 ApiKeyStartup.EnsureConfigured(builder.Environment.EnvironmentName, apiKeys);
 
-var directory = new StaticDirectory(SplitCsv(Env("WF_USERS", "")), GroupsFromEnv());
+var users = SplitCsv(Env("WF_USERS", ""));
+var groups = GroupsFromEnv();
+IDirectory directory = users.Count == 0 && groups.Count == 0
+    ? new OpenDirectory()
+    : new StaticDirectory(users, groups);
+Console.WriteLine(directory is OpenDirectory
+    ? "directory: open (any user/group id accepted)"
+    : "directory: static");
 
 IStore store = new MemoryStore();
 PostgresStore? postgres = null;

@@ -48,7 +48,9 @@ dotnet run --project src/WorkflowEngine.Server
 | `Task` | رکورد وظیفه در کارتابل که به یک کاربر یا یک گروه تخصیص یافته است |
 | `Inbox` / `Tasks` | وظایف در وضعیت باز (`open`) متعلق به یک کاربر (شامل وظایف فردی و گروه‌های عضو) یا یک گروه |
 
-شناسهٔ انجام‌دهندهٔ عملیات از طریق هدر `X-Actor-Id` ارسال می‌گردد. موتور گردش کار جدول اختصاصی برای کاربران ذخیره نمی‌کند و اطلاعات اعضا و گروه‌ها را از طریق رابط `IDirectory` دریافت می‌نماید.
+شناسهٔ انجام‌دهندهٔ عملیات از طریق هدر `X-Actor-Id` ارسال می‌گردد. این مقدار برای انجین یک شناسهٔ مات (opaque) است — مثلاً `102` به‌عنوان شناسهٔ کاربر در سامانهٔ خودتان. انجین جدول کاربران ندارد و لاگین نمی‌کند؛ فقط همان رشته را در تسک‌ها ذخیره و با آن مجوز عملیات را می‌سنجد.
+
+اگر `WF_USERS` و `WF_GROUP_*` تنظیم نشوند، سرویس به‌صورت پیش‌فرض از `OpenDirectory` استفاده می‌کند: هر شناسهٔ کاربر یا گروه پذیرفته می‌شود و عضویت گروه اجباری نیست. وقتی فهرست کاربران/گروه‌ها را تعریف کنید، `StaticDirectory` فعال می‌شود و ارجاع به گروه خالی یا ادعای عضویت نادرست رد می‌گردد. در پروداکشن می‌توانید به‌جای آن‌ها `IDirectory` را به SSO / LDAP وصل کنید.
 
 ---
 
@@ -101,22 +103,26 @@ var open = await eng.ListUserProcesses("alice", "open");
 
 </div>
 
-در محیط پروداکشن می‌توانید رابط `IDirectory` را به سرویس هویت سازمانی خود (مانند Active Directory / LDAP یا SSO/Keycloak) متصل کنید. این رابط وظیفهٔ بررسی وجود کاربر و تعیین گروه‌ها و اعضا را برعهده دارد:
+در محیط پروداکشن می‌توانید رابط `IDirectory` را به سرویس هویت سازمانی خود (مانند Active Directory / LDAP یا SSO/Keycloak) متصل کنید. این رابط وظیفهٔ بررسی وجود کاربر و تعیین گروه‌ها و اعضا را برعهده دارد. اگر هیچ دایرکتوری پیکربندی نکنید، پیش‌فرض `OpenDirectory` است و هر شناسه‌ای که بفرستید کار می‌کند:
 
 <div dir="ltr">
 
 ```csharp
 public interface IDirectory
 {
+    // false = OpenDirectory: any user/group id is accepted
+    bool EnforcesMembership { get; }
+
     Task<bool> UserExists(string userId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<string>> GroupMembers(string groupId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<string>> UserGroups(string userId, CancellationToken cancellationToken = default);
+    Task<bool> IsMember(string userId, string groupId, CancellationToken cancellationToken = default);
 }
 ```
 
 </div>
 
-در ادامه دو نمونه پیاده‌سازی کاربردی برای محیط‌های سازمانی ارائه شده است:
+در ادامه دو نمونه پیاده‌سازی کاربردی برای محیط‌های سازمانی ارائه شده است (هر دو با `EnforcesMembership = true`):
 
 ### نمونهٔ ۱: پیاده‌سازی مبتنی بر SSO و سرویس‌های وب (مانند Keycloak یا REST Identity API)
 
@@ -139,6 +145,8 @@ public sealed class HttpIdentityDirectory : IDirectory
     private readonly HttpClient _http;
     private readonly IMemoryCache _cache;
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(10);
+
+    public bool EnforcesMembership => true;
 
     public HttpIdentityDirectory(HttpClient http, IMemoryCache cache)
     {
@@ -175,6 +183,12 @@ public sealed class HttpIdentityDirectory : IDirectory
             return (IReadOnlyList<string>)(response ?? []);
         }) ?? [];
     }
+
+    public async Task<bool> IsMember(string userId, string groupId, CancellationToken cancellationToken = default)
+    {
+        var members = await GroupMembers(groupId, cancellationToken);
+        return members.Contains(userId);
+    }
 }
 ```
 
@@ -194,6 +208,8 @@ public sealed class ActiveDirectoryService : IDirectory
 {
     private readonly string _domain;
     private readonly string? _container;
+
+    public bool EnforcesMembership => true;
 
     public ActiveDirectoryService(string domain, string? container = null)
     {
@@ -238,6 +254,12 @@ public sealed class ActiveDirectoryService : IDirectory
             .ToList();
 
         return Task.FromResult<IReadOnlyList<string>>(groups);
+    }
+
+    public async Task<bool> IsMember(string userId, string groupId, CancellationToken cancellationToken = default)
+    {
+        var members = await GroupMembers(groupId, cancellationToken);
+        return members.Contains(userId);
     }
 }
 ```
@@ -509,7 +531,7 @@ curl -s -H 'X-API-Key: local-dev-key' -H 'X-Actor-Id: alice' \
 |-------------|----------|
 | `DATABASE_URL` | رشتهٔ اتصال به پایگاه دادهٔ Postgres؛ در صورت عدم تنظیم، داده‌ها در حافظه موقت نگهداری می‌شوند |
 | `ADDR` | پورت و آدرس دریافت درخواست‌ها (پیش‌فرض: `:8081`) |
-| `WF_USERS` / `WF_GROUP_<id>` | تنظیمات کاربران و اعضای گروه‌ها در دایرکتوری ایستا |
+| `WF_USERS` / `WF_GROUP_<id>` | اختیاری. اگر خالی باشد، `OpenDirectory` فعال است و هر شناسهٔ کاربر/گروه پذیرفته می‌شود. با تعریف این متغیرها، دایرکتوری ایستا (`StaticDirectory`) عضویت را اجباری می‌کند |
 | `WF_API_KEYS` | کلید(های) مشترک API (جداشده با ویرگول). خارج از Development اجباری است. درخواست‌ها باید `X-API-Key` یا `Authorization: Bearer` معتبر بفرستند |
 | `ASPNETCORE_ENVIRONMENT` | در `Development` می‌توان بدون کلید کار کرد؛ در `Production` بدون `WF_API_KEYS` سرویس بالا نمی‌آید |
 

@@ -27,7 +27,7 @@ WorkFlowEngine/
 │   │   └── Results/           # نتایج متدها (StartResult, ReferResult, Completion, ...)
 │   ├── WorkflowEngine.Infrastructure/
 │   │   ├── Persistence/       # ذخیره‌سازی داده‌ها (MemoryStore, PostgresStore)
-│   │   └── Identity/          # سرویس هویت و دایرکتوری (StaticDirectory)
+│   │   └── Identity/          # دایرکتوری (OpenDirectory پیش‌فرض، StaticDirectory)
 │   └── WorkflowEngine.Server/
 │       ├── Program.cs         # ریشهٔ ترکیب وابستگی‌ها (Composition Root)
 │       ├── Controllers/       # کنترلرهای وب REST
@@ -70,11 +70,11 @@ dotnet run --project src/WorkflowEngine.Server
 |-------------|---------------|----------|
 | `ADDR` | `:8081` | پورت و آدرس گوش دادن به درخواست‌ها (داخل Docker `:8080`، روی سیستم میزبان `8081`) |
 | `DATABASE_URL` | خالی | رشتهٔ اتصال Postgres؛ در صورت خالی بودن از حافظه موقت استفاده می‌شود |
-| `WF_USERS` | خالی | فهرست کاربران در دایرکتوری ایستا |
-| `WF_GROUP_<id>` | — | اعضای گروه با شناسهٔ `id` |
+| `WF_USERS` | خالی | اگر خالی باشد (و `WF_GROUP_*` هم نباشد)، `OpenDirectory`: هر شناسهٔ کاربر/گروه پذیرفته می‌شود |
+| `WF_GROUP_<id>` | — | با تعریف این‌ها به‌همراه `WF_USERS`، دایرکتوری ایستا عضویت گروه را چک می‌کند |
 | `WF_API_KEYS` | در Development اختیاری | کلید مشترک درگاه؛ خارج از Development بدون آن فرآیند شروع نمی‌شود |
 
-شناسایی کاربر در درخواست‌های REST از طریق هدر `X-Actor-Id` انجام می‌گیرد. این هدر جایگزین لاگین نیست. قفل ورودی API در پروداکشن با `WF_API_KEYS` است (هدر `X-API-Key`). جزئیات استقرار و جلوگیری از لو رفتن کلید: [بخش ۶](#api-key-architecture).
+شناسایی کاربر در درخواست‌های REST از طریق هدر `X-Actor-Id` انجام می‌گیرد. این مقدار شناسهٔ مات سامانهٔ میزبان است (مثلاً `102`) و جایگزین لاگین نیست. قفل ورودی API در پروداکشن با `WF_API_KEYS` است (هدر `X-API-Key`). جزئیات استقرار و جلوگیری از لو رفتن کلید: [بخش ۶](#api-key-architecture).
 
 ---
 

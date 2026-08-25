@@ -218,9 +218,12 @@ public sealed class Engine
             case AssigneeKind.Group:
                 if (ids.Count != 1)
                     throw EngineException.Invalid("group referral needs exactly one id");
-                var members = await _dir.GroupMembers(ids[0], cancellationToken);
-                if (members.Count == 0)
-                    throw EngineException.EmptyGroup();
+                if (_dir.EnforcesMembership)
+                {
+                    var members = await _dir.GroupMembers(ids[0], cancellationToken);
+                    if (members.Count == 0)
+                        throw EngineException.EmptyGroup();
+                }
                 break;
             case AssigneeKind.Users:
                 if (ids.Count == 0)

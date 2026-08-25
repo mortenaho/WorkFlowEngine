@@ -232,6 +232,33 @@ public class EngineTests
     }
 
     [Fact]
+    public async Task OpenDirectoryAcceptsAnyUserAndGroup()
+    {
+        var eng = new Engine(new MemoryStore(), new OpenDirectory());
+        var started = await eng.Start("purchase", "102");
+        var referUser = await eng.Refer("102", new ReferInput
+        {
+            DefinitionKey = started.DefinitionKey,
+            ParentInstanceId = started.InstanceId,
+            ToKind = AssigneeKind.User,
+            ToId = "205",
+        });
+        Assert.Equal("205", referUser.Task!.AssigneeId);
+
+        var referGroup = await eng.Refer("102", new ReferInput
+        {
+            DefinitionKey = started.DefinitionKey,
+            ParentInstanceId = started.InstanceId,
+            ToKind = AssigneeKind.Group,
+            ToId = "unit-17",
+        });
+        Assert.Equal("unit-17", referGroup.Task!.AssigneeId);
+
+        await eng.ClaimTask(referGroup.Task.Id, "999");
+        await eng.CompleteTask(referGroup.Task.Id, "999", "done");
+    }
+
+    [Fact]
     public async Task ReferMismatchedDefinitionKeyFails()
     {
         var eng = Fixtures.NewEngine();
