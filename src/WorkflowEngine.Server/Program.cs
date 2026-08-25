@@ -28,6 +28,9 @@ if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ASPNETCORE_URLS")))
     builder.WebHost.UseUrls(urls);
 }
 
+var apiKeys = SplitCsv(Env("WF_API_KEYS", ""));
+ApiKeyStartup.EnsureConfigured(builder.Environment.EnvironmentName, apiKeys);
+
 var directory = new StaticDirectory(SplitCsv(Env("WF_USERS", "")), GroupsFromEnv());
 
 IStore store = new MemoryStore();
@@ -45,7 +48,6 @@ else
 }
 
 var engine = new Engine(store, directory);
-var apiKeys = SplitCsv(Env("WF_API_KEYS", ""));
 builder.Services.AddWorkflow(engine, apiKeys);
 
 var app = builder.Build();
@@ -55,6 +57,9 @@ var listen = Environment.GetEnvironmentVariable("ASPNETCORE_URLS")
              ?? Environment.GetEnvironmentVariable("ADDR")
              ?? ":8081";
 Console.WriteLine($"workflow engine listening on {listen}");
+Console.WriteLine(apiKeys.Count > 0
+    ? $"api auth: X-API-Key required ({apiKeys.Count} key(s))"
+    : "api auth: disabled (Development)");
 Console.WriteLine("swagger UI: http://localhost:8081/swagger");
 
 try

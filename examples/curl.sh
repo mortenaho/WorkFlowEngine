@@ -1,8 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 BASE="${BASE:-http://127.0.0.1:8081}"
+# First value of WF_API_KEYS, or WF_API_KEY. Empty in Development if keys are not set.
+API_KEY="${WF_API_KEY:-${WF_API_KEYS%%,*}}"
 
-json() { curl -sS -H 'Content-Type: application/json' -H "X-Actor-Id: ${1}" "${@:2}"; }
+json() {
+  local args=(-H 'Content-Type: application/json' -H "X-Actor-Id: ${1}")
+  if [[ -n "${API_KEY}" ]]; then
+    args+=(-H "X-API-Key: ${API_KEY}")
+  fi
+  curl -sS "${args[@]}" "${@:2}"
+}
 
 echo "== start =="
 START=$(json alice -X POST "$BASE/v1/processes/start" \

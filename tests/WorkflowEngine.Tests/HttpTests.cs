@@ -250,6 +250,12 @@ public class HttpTests : IAsyncLifetime
         w = await locked.Client.SendAsync(req);
         Assert.Equal(HttpStatusCode.OK, w.StatusCode);
 
+        req = new HttpRequestMessage(HttpMethod.Get, "/v1/tasks?user=bob");
+        req.Headers.TryAddWithoutValidation("X-Actor-Id", "bob");
+        req.Headers.TryAddWithoutValidation("Authorization", "Bearer secret");
+        w = await locked.Client.SendAsync(req);
+        Assert.Equal(HttpStatusCode.OK, w.StatusCode);
+
         req = new HttpRequestMessage(HttpMethod.Get, "/health");
         w = await locked.Client.SendAsync(req);
         Assert.Equal(HttpStatusCode.OK, w.StatusCode);
