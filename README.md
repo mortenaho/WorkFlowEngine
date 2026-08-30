@@ -1,13 +1,13 @@
 <div dir="rtl">
 
-# Workflow Engine
+# TaskFlow
 
 سرویس ارجاع و مدیریت گردش کار بر پایهٔ ASP.NET Core (`net10.0`) با معماری تمیز (Clean Architecture). این سیستم بدون نیاز به مفسر پیچیدهٔ BPMN طراحی شده و قابلیت‌های گردش کار را از طریق APIهای سبک و سرراست در اختیار برنامه‌های شما قرار می‌دهد.
 
 <div dir="ltr">
 
 ```bash
-dotnet run --project src/WorkflowEngine.Server
+dotnet run --project src/TaskFlow.Server
 ```
 
 </div>
@@ -119,6 +119,26 @@ curl -s 'http://127.0.0.1:8081/v1/users/alice/processes?state=open'
 ```
 
 </div>
+
+**۸. رفتن خودکار به مرحله بعد** — موتور مرحلهٔ بعد را خودش نمی‌داند؛ با `TaskFlowOrchestrator` (SDK) یا `ProcessOrchestrator` (in-process) بعد از `allCompleted` یک `Refer` بعدی می‌سازید. دیاگرام و توضیح: [docs/usage.md](docs/usage.md#ارجاع-موازی-و-رفتن-خودکار-به-مرحله-بعد).
+
+## SDK برای میکروسرویس‌ها (C#)
+
+یک بار `TaskFlow.Server` را بالا بیاورید؛ هر میکروسرویس پکیج `TaskFlow.Client` را اضافه می‌کند و به همان Base URL وصل می‌شود:
+
+<div dir="ltr">
+
+```csharp
+builder.Services.AddTaskFlowClient(o =>
+{
+    o.BaseAddress = new Uri("http://taskflow:8081/");
+    o.ApiKey = builder.Configuration["TaskFlow:ApiKey"];
+});
+```
+
+</div>
+
+جزئیات: [docs/usage.md — بخش ۲](docs/usage.md).
 
 ## استقرار با Docker
 

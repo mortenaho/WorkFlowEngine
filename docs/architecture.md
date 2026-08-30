@@ -15,26 +15,27 @@
 ```
 WorkFlowEngine/
 ├── src/
-│   ├── WorkflowEngine.Domain/
+│   ├── TaskFlow.Domain/
 │   │   ├── Entities/
 │   │   ├── ValueObjects/
 │   │   ├── Common/
 │   │   └── Errors/
-│   ├── WorkflowEngine.Application/
+│   ├── TaskFlow.Application/
 │   │   ├── Engine.cs
+│   │   ├── ProcessOrchestrator.cs
 │   │   ├── Ports/
 │   │   ├── Tenancy/
 │   │   └── Results/
-│   ├── WorkflowEngine.Infrastructure/
+│   ├── TaskFlow.Infrastructure/
 │   │   ├── Persistence/
 │   │   └── Identity/
-│   └── WorkflowEngine.Server/
+│   └── TaskFlow.Server/
 │       ├── Program.cs
 │       ├── Controllers/
 │       ├── Http/
 │       ├── Requests/
 │       └── Contracts/
-├── tests/WorkflowEngine.Tests/
+├── tests/TaskFlow.Tests/
 ├── examples/
 └── docs/
 ```
@@ -48,6 +49,7 @@ WorkFlowEngine/
 | `Domain/Common` | Tenant، Vars، Ids |
 | `Domain/Errors` | EngineException، EngineErrorKind |
 | `Application/Engine.cs` | قوانین کسب‌وکار: شروع، ارجاع، تکمیل |
+| `Application/ProcessOrchestrator.cs` | پس از `allCompleted`، ارجاع مرحلهٔ بعد |
 | `Application/Ports` | رابط‌ها: IStore، IDirectory، ITenantProvider |
 | `Infrastructure/Persistence` | MemoryStore، PostgresStore |
 | `Infrastructure/Identity` | OpenDirectory (پیش‌فرض)، StaticDirectory |
@@ -73,15 +75,15 @@ Server.Program         →  wires Store / Directory / Engine
 
 | پروژه | نقش و مسئولیت | لایه‌های مجاز جهت وابستگی |
 |------|----------------|--------------------------|
-| `WorkflowEngine.Domain` | موجودیت‌ها و خطاهای دامنه (`Definition`, `ProcessInstance`, `WorkflowTask`, `EngineException`) | بدون وابستگی به لایه‌های بیرونی |
-| `WorkflowEngine.Application` | هستهٔ فرایند (`Engine` جهت مدیریت شروع، ارجاع، تکمیل، بستن فرایندها) و پورت‌ها (`IStore`, `IDirectory`) | صرفاً وابسته به `Domain` |
-| `WorkflowEngine.Infrastructure` | پیاده‌سازی ذخیره‌ساز پایگاه داده (Postgres / حافظه) و دایرکتوری کاربران | وابسته به `Application` و `Domain` |
-| `WorkflowEngine.Server` | رابط REST، مدیریت DTOها، Swagger و ترکیب وابستگی‌ها | وابسته به `Application` و `Infrastructure` |
+| `TaskFlow.Domain` | موجودیت‌ها و خطاهای دامنه (`Definition`, `ProcessInstance`, `WorkflowTask`, `EngineException`) | بدون وابستگی به لایه‌های بیرونی |
+| `TaskFlow.Application` | هستهٔ فرایند (`Engine` و `ProcessOrchestrator`) و پورت‌ها (`IStore`, `IDirectory`) | صرفاً وابسته به `Domain` |
+| `TaskFlow.Infrastructure` | پیاده‌سازی ذخیره‌ساز پایگاه داده (Postgres / حافظه) و دایرکتوری کاربران | وابسته به `Application` و `Domain` |
+| `TaskFlow.Server` | رابط REST، مدیریت DTOها، Swagger و ترکیب وابستگی‌ها | وابسته به `Application` و `Infrastructure` |
 
 <div dir="ltr">
 
 ```bash
-dotnet run --project src/WorkflowEngine.Server
+dotnet run --project src/TaskFlow.Server
 ```
 
 </div>
@@ -130,6 +132,29 @@ flowchart LR
 
 - **وضعیت اینستنس:** تا زمانی که وظایف باز داشته باشد در وضعیت `running` است؛ پس از تکمیل تمامی وظایفِ مرتبط با همان ارجاع به `completed` تغییر می‌یابد.
 - **وضعیت تسک:** شامل `open` (باز)، `claimed` (تحویل‌گرفته‌شده)، `done` (تکمیل‌شده) و `cancelled` (لغوشده).
+
+### رفتن خودکار به مرحله بعد (ProcessOrchestrator)
+
+`Engine` فقط primitiveها را دارد: `Start`، `Refer`، `CompleteTask`، `Completion`. مسیر «بعد از این مرحله، مرحلهٔ فلان» داخل definition ذخیره نمی‌شود.
+
+برای سناریوهای ثابت (مثلاً موازی → حقوقی)، کلاس `ProcessOrchestrator` روی `CompleteTask` می‌نشیند و وقتی `allCompleted` شد همان callback شما را به یک `Refer` جدید تبدیل می‌کند:
+
+<div dir="ltr">
+
+```mermaid
+flowchart LR
+    complete[["CompleteTask"]] --> check{AllCompleted?}
+    check -->|"خیر"| stop([فقط CompleteResult])
+    check -->|"بله"| refer[["Refer مرحله بعد"]]
+    refer --> out([AdvanceResult با Next])
+
+    style check fill:#FFECBD,stroke:#FFC943
+    style refer fill:#CDF4D3,stroke:#66D575
+```
+
+</div>
+
+شرح روان‌تر با دیاگرام سناریو و نمونه کد: [usage.md — ارجاع موازی و رفتن خودکار](usage.md#ارجاع-موازی-و-رفتن-خودکار-به-مرحله-بعد).
 
 ---
 
@@ -207,6 +232,7 @@ erDiagram
 
 - تکمیل تسک شخصی صرفاً توسط همان فرد امکان‌پذیر است.
 - تکمیل تسک گروهی تنها توسط عضوی که تسک را تحویل گرفته (Claim کرده) مجاز است.
+- اگر بخواهید بعد از `allCompleted` خودکار ارجاع بعدی ساخته شود، از `ProcessOrchestrator.CompleteAndAdvance` استفاده کنید (جزئیات در [usage.md](usage.md#ارجاع-موازی-و-رفتن-خودکار-به-مرحله-بعد)).
 
 ### ۵. تکمیل و بستن کل فرایند (Complete and End)
 
@@ -248,7 +274,7 @@ erDiagram
 ```mermaid
 flowchart LR
   react[React browser]
-  engine[Workflow Engine :8081]
+  engine[TaskFlow :8081]
   react -->|"fetch + X-API-Key"| engine
 ```
 
@@ -267,7 +293,7 @@ sequenceDiagram
   actor User
   participant React
   participant BFF as Your backend
-  participant Engine as Workflow Engine
+  participant Engine as TaskFlow
 
   User->>React: open inbox
   React->>BFF: GET /api/inbox
@@ -293,7 +319,7 @@ flowchart TB
     app[Backend / BFF]
   end
   subgraph private [Private network]
-    engine[Workflow Engine]
+    engine[TaskFlow]
     db[(Postgres)]
   end
   browser -->|"HTTPS, app session"| proxy --> app

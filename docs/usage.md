@@ -11,11 +11,12 @@
 ۵. بررسی وضعیت تکمیل ارجاع‌های چندنفره  
 ۶. تکمیل وظیفه و بستن کامل پرونده  
 ۷. دریافت آمار و فهرست فرایندهای مرتبط با یک کاربر  
+۸. رفتن خودکار به مرحله بعد با `ProcessOrchestrator` (بعد از `allCompleted`)  
 
 <div dir="ltr">
 
 ```bash
-dotnet run --project src/WorkflowEngine.Server
+dotnet run --project src/TaskFlow.Server
 ```
 
 </div>
@@ -35,7 +36,7 @@ dotnet run --project src/WorkflowEngine.Server
 | تکمیل و پایان فرایند | `POST /v1/tasks/{id}/complete-and-end` |
 | فرایندهای کاربر | `GET /v1/users/{user}/processes` با فیلتر اختیاری `state=open`، `closed` یا `notStarted` |
 
-امکان استفاده به دو شیوه وجود دارد: کتابخانهٔ داخلی در کد (`Application` + `Infrastructure`) و وب‌سرویس REST. نمونه اسکریپت آزمایشی: [`examples/curl.sh`](../examples/curl.sh).
+برای میکروسرویس‌ها مسیر پیشنهادی **SDK کلاینت** (`TaskFlow.Client`) است: یک بار `TaskFlow.Server` را بالا می‌آورید و هر سرویس فقط با HTTP به همان آدرس وصل می‌شود. در تست‌های واحد یا وقتی خودتان میزبان انجین هستید، می‌توانید `Engine` را داخل‌پردازشی هم بسازید. نمونهٔ `curl`: [`examples/curl.sh`](../examples/curl.sh).
 
 ---
 
@@ -57,47 +58,118 @@ dotnet run --project src/WorkflowEngine.Server
 
 ## ۲. استفاده از طریق SDK در زبان C#‎
 
-### راه‌اندازی دایرکتوری و Engine
+هدف این بخش: **یک `TaskFlow.Server` از قبل بالا آمده** (مثلاً در Docker یا کلاستر) و چند میکروسرویس که هر کدام فقط پکیج `TaskFlow.Client` را دارند و به همان آدرس HTTP وصل می‌شوند. انجین، دیتابیس و `IDirectory` روی سرور می‌مانند؛ کلاینت‌ها `Engine` یا Postgres را داخل سرویس خودشان نمی‌سازند.
+
+<div dir="ltr">
+
+```mermaid
+flowchart LR
+    ms1[Ordering API] -->|TaskFlow.Client| eng[TaskFlow.Server]
+    ms2[HR API] -->|TaskFlow.Client| eng
+    ms3[Legal BFF] -->|TaskFlow.Client| eng
+    eng --> db[(Postgres)]
+
+    style eng fill:#C2E5FF,stroke:#3DADFF
+    style db fill:#CDF4D3,stroke:#66D575
+```
+
+</div>
+
+### پیش‌نیاز: سرور مشترک
+
+<div dir="ltr">
+
+```bash
+dotnet run --project src/TaskFlow.Server
+# یا: docker compose up --build
+# Base URL پیش‌فرض: http://127.0.0.1:8081
+```
+
+</div>
+
+در پروداکشن روی سرور `WF_API_KEYS` را تنظیم کنید؛ هر میکروسرویس همان کلید را فقط در env بک‌اند خودش نگه می‌دارد و به‌صورت `X-API-Key` می‌فرستد (نه در مرورگر).
+
+### افزودن پکیج به میکروسرویس
+
+<div dir="ltr">
+
+```xml
+<ItemGroup>
+  <ProjectReference Include="..\..\path\to\TaskFlow.Client\TaskFlow.Client.csproj" />
+  <!-- یا پس از انتشار: <PackageReference Include="TaskFlow.Client" Version="..." /> -->
+</ItemGroup>
+```
+
+</div>
+
+### ثبت در `Program.cs` هر میکروسرویس
 
 <div dir="ltr">
 
 ```csharp
-using WorkflowEngine.Application;
-using WorkflowEngine.Domain;
-using WorkflowEngine.Infrastructure;
+using TaskFlow.Client;
 
-var dir = new StaticDirectory(
-    ["alice", "mortenaho", "cara", "dan"],
-    new Dictionary<string, IReadOnlyList<string>>
-    {
-        ["legal"] = ["mortenaho", "cara"],
-        ["finance"] = ["dan", "cara"],
-    });
-var eng = new Engine(new MemoryStore(), dir);
+builder.Services.AddTaskFlowClient(o =>
+{
+    o.BaseAddress = new Uri(builder.Configuration["TaskFlow:BaseUrl"]
+        ?? "http://taskflow:8081/");
+    o.ApiKey = builder.Configuration["TaskFlow:ApiKey"];   // همان WF_API_KEYS سرور
+    o.TenantId = builder.Configuration["TaskFlow:TenantId"]; // اختیاری؛ مثلاً acme
+});
+
+// بعداً در کنترلر / هندلر:
+// private readonly TaskFlowClient _tf;
+// private readonly TaskFlowOrchestrator _orch;
+```
+
+</div>
+
+بدون DI هم می‌توانید بسازید:
+
+<div dir="ltr">
+
+```csharp
+using TaskFlow.Client;
+
+var http = new HttpClient { BaseAddress = new Uri("http://127.0.0.1:8081/") };
+var tf = new TaskFlowClient(http, new TaskFlowClientOptions
+{
+    ApiKey = Environment.GetEnvironmentVariable("TASKFLOW_API_KEY"),
+    TenantId = "default",
+});
+await tf.EnsureHealthy();
 ```
 
 </div>
 
 ### شروع فرایند
 
-خروجی شامل `DefinitionKey` و `InstanceId` است.
+خروجی شامل `DefinitionKey` و `InstanceId` است. هدر `X-Actor-Id` را SDK از آرگومان `initiator` / `actor` می‌گذارد.
 
 <div dir="ltr">
 
 ```csharp
-var started = await eng.Start("purchase", "alice", new Dictionary<string, object?> { ["amount"] = 1.5e8 });
+using TaskFlow.Application;
+using TaskFlow.Client;
+
+var started = await tf.Start(
+    "purchase",
+    "alice",
+    new Dictionary<string, object?> { ["amount"] = 1.5e8 });
 ```
 
 </div>
 
 ### ارجاع به کاربر یا گروه
 
-`ToKind` می‌تواند `User`، `Group` یا `Users` باشد. برای حالت چندنفره از `ToIds` استفاده کنید. خروجی شامل `InstanceId` و `Task` / `Tasks` است.
+`ToKind` می‌تواند `user`، `group` یا `users` باشد (`AssigneeKind`). برای حالت چندنفره از `ToIds` استفاده کنید.
 
 <div dir="ltr">
 
 ```csharp
-var refer = await eng.Refer("alice", new ReferInput
+using TaskFlow.Domain;
+
+var refer = await tf.Refer("alice", new ReferInput
 {
     DefinitionKey = started.DefinitionKey,
     ParentInstanceId = started.InstanceId,
@@ -110,50 +182,209 @@ var refer = await eng.Refer("alice", new ReferInput
 
 </div>
 
-### کارتابل وظایف
+### ارجاع موازی و رفتن خودکار به مرحله بعد
+
+موتور خودش «مرحلهٔ بعد» را بلد نیست؛ فقط ارجاع می‌سازد و با `allCompleted` می‌گوید آیا آن ارجاع تمام شده یا نه. روی کلاینت از `TaskFlowOrchestrator` استفاده کنید (معادل HTTPیِ `ProcessOrchestrator`).
+
+**به زبان ساده:**
+
+1. با `Refer` و `Users` کار را هم‌زمان به چند نفر بفرست.  
+2. هر نفر تسک خودش را با `CompleteAndAdvance` تمام می‌کند.  
+3. تا وقتی همه تمام نکرده‌اند، هیچ ارجاع جدیدی ساخته نمی‌شود.  
+4. وقتی آخرین نفر تمام کرد (`allCompleted = true`)، اورکستریتور همان لحظه `Refer` بعدی را روی سرور می‌زند.
+
+#### تصویر کلی جریان
 
 <div dir="ltr">
 
-```csharp
-var inbox = await eng.PendingTasks("mortenaho", "");
-var groupInbox = await eng.PendingTasks("", "legal");
+```mermaid
+flowchart TD
+    start([Start purchase / alice]) --> parallel["Refer Users: mortenaho + cara"]
+    parallel --> m[Task mortenaho]
+    parallel --> c[Task cara]
+    m --> join{AllCompleted?}
+    c --> join
+    join -->|"نه — هنوز کسی باز است"| wait[صبر تا نفر بعدی]
+    join -->|"بله — همه تمام شدند"| next["Refer خودکار به legal"]
+    next --> claim[Claim توسط mortenaho]
+    claim --> finish([Complete])
+
+    style parallel fill:#C2E5FF,stroke:#3DADFF
+    style join fill:#FFECBD,stroke:#FFC943
+    style next fill:#CDF4D3,stroke:#66D575
 ```
 
 </div>
 
-### تکمیل و بستن کل پرونده
-
-پس از فراخوانی، `ended.Process.Status` برابر `completed` خواهد بود.
+#### چه چیزی کجا ساخته می‌شود؟
 
 <div dir="ltr">
 
-```csharp
-var ended = await eng.CompleteAndEnd(refer.Task!.Id, "mortenaho", "Case closed");
+```mermaid
+flowchart LR
+    root["Root instance alice"]
+    child1["Child instance موازی"]
+    child2["Child instance حقوقی"]
+    t1[Task mortenaho]
+    t2[Task cara]
+    t3[Task group legal]
+
+    root -->|"Refer Users"| child1
+    child1 --> t1
+    child1 --> t2
+    root -.->|"بعد از AllCompleted — Refer خودکار"| child2
+    child2 --> t3
+
+    style root fill:#DCCCFF,stroke:#874FFF
+    style child1 fill:#C2E5FF,stroke:#3DADFF
+    style child2 fill:#CDF4D3,stroke:#66D575
 ```
 
 </div>
 
-### فرایندهای کاربر
+- ریشه (`Start`) پرونده را نگه می‌دارد.  
+- هر `Refer` یک فرزند جدید می‌سازد؛ تسک‌ها زیر همان فرزند می‌نشینند.  
+- `AllCompleted` فقط برای **همان فرزند** حساب می‌شود، نه کل پرونده.  
+- ارجاع بعدی دوباره به همان ریشه وصل می‌شود (`ParentInstanceId`).
+
+#### ترتیب زمانی (میکروسرویس ↔ سرور مشترک)
 
 <div dir="ltr">
 
-```csharp
-var mine = await eng.ListUserProcesses("alice");
-var open = await eng.ListUserProcesses("alice", "open");
+```mermaid
+sequenceDiagram
+    participant MS as Microservice + TaskFlow.Client
+    participant Srv as TaskFlow.Server
+    participant M as mortenaho
+    participant C as cara
+    participant L as legal
+
+    MS->>Srv: Start purchase
+    MS->>Srv: Refer Users mortenaho + cara
+    Srv-->>M: Task open
+    Srv-->>C: Task open
+    M->>MS: CompleteAndAdvance
+    MS->>Srv: CompleteTask
+    Note over MS: AllCompleted = false — Next خالی
+    C->>MS: CompleteAndAdvance
+    MS->>Srv: CompleteTask
+    Note over MS: AllCompleted = true
+    MS->>Srv: Refer Group legal
+    Srv-->>L: Task open
+    M->>MS: Claim + Complete
+    MS->>Srv: claim / complete
 ```
 
 </div>
 
-در محیط پروداکشن می‌توانید رابط `IDirectory` را به سرویس هویت سازمانی خود (مانند Active Directory / LDAP یا SSO/Keycloak) متصل کنید. این رابط وظیفهٔ بررسی وجود کاربر و تعیین گروه‌ها و اعضا را برعهده دارد. اگر هیچ دایرکتوری پیکربندی نکنید، پیش‌فرض `OpenDirectory` است و هر شناسه‌ای که بفرستید کار می‌کند:
+#### نمونه کد
+
+اگر `DefinitionKey` یا `ParentInstanceId` را خالی بگذارید، اورکستریتور از تسکِ تکمیل‌شده پرشان می‌کند. ارجاع بعدی به‌نام `AssignedBy` همان مرحله (مثلاً `alice`) زده می‌شود.
+
+<div dir="ltr">
+
+```csharp
+var orch = new TaskFlowOrchestrator(tf);
+
+var parallel = await tf.Refer("alice", new ReferInput
+{
+    DefinitionKey = started.DefinitionKey,
+    ParentInstanceId = started.InstanceId,
+    Title = "تأیید موازی",
+    ToKind = AssigneeKind.Users,
+    ToIds = ["mortenaho", "cara"],
+});
+
+ReferResult? legal = null;
+foreach (var task in parallel.Tasks)
+{
+    var advanced = await orch.CompleteAndAdvance(
+        task.Id,
+        task.AssigneeId,
+        "تأیید شد",
+        _ => new ReferInput
+        {
+            Title = "بررسی حقوقی",
+            ToKind = AssigneeKind.Group,
+            ToId = "legal",
+        });
+
+    // فقط وقتی آخرین نفر تمام کند، Next پر می‌شود
+    if (advanced.Next is not null)
+        legal = advanced.Next;
+}
+```
+
+</div>
+
+نمونهٔ دامنهٔ in-process (بدون HTTP): [`examples/Scenario`](../examples/Scenario/Program.cs). تست یکپارچهٔ SDK روی سرور تست: `ClientSdkTests`.
+
+| مفهوم | معنی کوتاه |
+|--------|------------|
+| `Users` + `ToIds` | چند تسک موازی؛ **همه** باید تمام شوند |
+| `Group` + `ToId` | یک تسک مشترک؛ یکی Claim می‌کند |
+| `CompleteTask` | فقط همین تسک را می‌بندد |
+| `CompleteAndAdvance` | همان + در صورت `AllCompleted`، `Refer` بعدی |
+| `advanced.Next` | ارجاع تازه؛ تا قبل از join برابر `null` است |
+
+### کارتابل، تکمیل، و فرایندهای کاربر
+
+<div dir="ltr">
+
+```csharp
+var inbox = await tf.PendingTasks(user: "mortenaho");
+var groupInbox = await tf.PendingTasks(group: "legal");
+
+var ended = await tf.CompleteAndEnd(refer.Task!.Id, "mortenaho", "Case closed");
+// ended.Process.Status == "completed"
+
+var mine = await tf.ListUserProcesses("alice");
+var open = await tf.ListUserProcesses("alice", state: "open");
+```
+
+</div>
+
+سایر متدهای مهم SDK: `ClaimTask` / `UnclaimTask`، `Completion(instanceId)`، `ListByProcessKey`، `GetInstance`، `RegisterDefinition`.
+
+### چند سرویس، یک tenant یا چند tenant
+
+| سناریو | تنظیم |
+|--------|--------|
+| همهٔ میکروسرویس‌ها یک سازمان | `TenantId` را خالی بگذارید یا همه `default` |
+| جداسازی داده بین مشتری‌ها | در هر سرویس `o.TenantId = "acme"` یا در هر فراخوانی آرگومان `tenantId` |
+| محیط امن | همان `ApiKey` مشترک بک‌اندها؛ React کلید را نمی‌بیند |
+
+### حالت توکار (فقط وقتی خودتان سرور را می‌سازید)
+
+اگر می‌خواهید در تست یا یک باینری واحد، انجین را **داخل همان پروسس** داشته باشید (نه اتصال به سرور ریموت)، هنوز می‌توانید `Engine` + `MemoryStore`/`PostgresStore` بسازید. دایرکتوری کاربران (`IDirectory`) فقط روی **میزبان سرور** معنی دارد، نه روی میکروسرویس کلاینت:
+
+<div dir="ltr">
+
+```csharp
+using TaskFlow.Application;
+using TaskFlow.Infrastructure;
+
+var dir = new StaticDirectory(
+    ["alice", "mortenaho", "cara", "dan"],
+    new Dictionary<string, IReadOnlyList<string>>
+    {
+        ["legal"] = ["mortenaho", "cara"],
+        ["finance"] = ["dan", "cara"],
+    });
+var eng = new Engine(new MemoryStore(), dir);
+var orch = new ProcessOrchestrator(eng);
+```
+
+</div>
+
+برای اتصال سرور به SSO / LDAP، `IDirectory` را روی همان پروسس `TaskFlow.Server` پیاده کنید (نه داخل هر میکروسرویس). نمونهٔ رابط:
 
 <div dir="ltr">
 
 ```csharp
 public interface IDirectory
 {
-    // false = OpenDirectory: any user/group id is accepted
     bool EnforcesMembership { get; }
-
     Task<bool> UserExists(string userId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<string>> GroupMembers(string groupId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<string>> UserGroups(string userId, CancellationToken cancellationToken = default);
@@ -163,189 +394,7 @@ public interface IDirectory
 
 </div>
 
-در ادامه دو نمونه پیاده‌سازی کاربردی برای محیط‌های سازمانی ارائه شده است (هر دو با `EnforcesMembership = true`):
-
-### نمونهٔ ۱: پیاده‌سازی مبتنی بر SSO و سرویس‌های وب (مانند Keycloak یا REST Identity API)
-
-این پیاده‌سازی نقش یک **پل ارتباطی (آداپتور)** میان موتور گردش کار و سامانهٔ احراز هویت مرکزی سازمان (SSO / IAM / Keycloak) را ایفا می‌کند. از آنجا که موتور گردش کار جدول اختصاصی برای کاربران یا چارت سازمانی ذخیره نمی‌کند، این کلاس از طریق وب‌سرویس (HTTP REST API) اطلاعات مورد نیاز را از سرویس هویت مرکزی دریافت می‌نماید:
-
-- **بررسی وجود کاربر (`UserExists`):** هنگام ارجاع کار، از سرور SSO استعلام می‌کند که آیا این کاربر وجود دارد و فعال است یا خیر.
-- **اعضای گروه (`GroupMembers`):** هنگامی که تسکی به یک واحد یا گروه (مانند `legal`) ارجاع داده می‌شود، اعضای فعال آن گروه را استعلام می‌نماید تا افراد مجاز به مشاهده و انجام تسک مشخص شوند.
-- **گروه‌های کاربر (`UserGroups`):** هنگام باز شدن کارتابل یک کاربر، گروه‌ها و نقش‌های او را استعلام می‌کند تا علاوه بر وظایف فردی، وظایف ارجاع‌شده به گروه‌های او نیز در کارتابل نمایش داده شود.
-- **کَش درون‌حافظه‌ای (`IMemoryCache`):** برای جلوگیری از ارسال مکرر درخواست شبکه در هر عملیات و افزایش کارایی سیستم، نتایج استعلام‌ها برای مدت مشخصی (مثلاً ۱۰ دقیقه) در حافظه کش می‌شوند.
-
-<div dir="ltr">
-
-```csharp
-using System.Net.Http.Json;
-using Microsoft.Extensions.Caching.Memory;
-using WorkflowEngine.Application;
-
-public sealed class HttpIdentityDirectory : IDirectory
-{
-    private readonly HttpClient _http;
-    private readonly IMemoryCache _cache;
-    private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(10);
-
-    public bool EnforcesMembership => true;
-
-    public HttpIdentityDirectory(HttpClient http, IMemoryCache cache)
-    {
-        _http = http;
-        _cache = cache;
-    }
-
-    public async Task<bool> UserExists(string userId, CancellationToken cancellationToken = default)
-    {
-        return await _cache.GetOrCreateAsync($"user:exists:{userId}", async entry =>
-        {
-            entry.AbsoluteExpirationRelativeToNow = CacheDuration;
-            var response = await _http.GetAsync($"api/v1/users/{Uri.EscapeDataString(userId)}", cancellationToken);
-            return response.IsSuccessStatusCode;
-        });
-    }
-
-    public async Task<IReadOnlyList<string>> GroupMembers(string groupId, CancellationToken cancellationToken = default)
-    {
-        return await _cache.GetOrCreateAsync($"group:members:{groupId}", async entry =>
-        {
-            entry.AbsoluteExpirationRelativeToNow = CacheDuration;
-            var response = await _http.GetFromJsonAsync<List<string>>($"api/v1/groups/{Uri.EscapeDataString(groupId)}/members", cancellationToken);
-            return (IReadOnlyList<string>)(response ?? []);
-        }) ?? [];
-    }
-
-    public async Task<IReadOnlyList<string>> UserGroups(string userId, CancellationToken cancellationToken = default)
-    {
-        return await _cache.GetOrCreateAsync($"user:groups:{userId}", async entry =>
-        {
-            entry.AbsoluteExpirationRelativeToNow = CacheDuration;
-            var response = await _http.GetFromJsonAsync<List<string>>($"api/v1/users/{Uri.EscapeDataString(userId)}/groups", cancellationToken);
-            return (IReadOnlyList<string>)(response ?? []);
-        }) ?? [];
-    }
-
-    public async Task<bool> IsMember(string userId, string groupId, CancellationToken cancellationToken = default)
-    {
-        var members = await GroupMembers(groupId, cancellationToken);
-        return members.Contains(userId);
-    }
-}
-```
-
-</div>
-
-### نمونهٔ ۲: پیاده‌سازی مبتنی بر Active Directory / LDAP
-
-در صورت استفاده از اکتیو دایرکتوری در محیط ویندوزی/سازمانی، می‌توانید با استفاده از کلاس‌های `System.DirectoryServices.AccountManagement` (یا پروتکل LDAP) مستقیماً اطلاعات را استعلام نمایید:
-
-<div dir="ltr">
-
-```csharp
-using System.DirectoryServices.AccountManagement;
-using WorkflowEngine.Application;
-
-public sealed class ActiveDirectoryService : IDirectory
-{
-    private readonly string _domain;
-    private readonly string? _container;
-
-    public bool EnforcesMembership => true;
-
-    public ActiveDirectoryService(string domain, string? container = null)
-    {
-        _domain = domain;
-        _container = container;
-    }
-
-    public Task<bool> UserExists(string userId, CancellationToken cancellationToken = default)
-    {
-        using var ctx = new PrincipalContext(ContextType.Domain, _domain, _container);
-        using var user = UserPrincipal.FindByIdentity(ctx, IdentityType.SamAccountName, userId);
-        return Task.FromResult(user is not null && user.Enabled == true);
-    }
-
-    public Task<IReadOnlyList<string>> GroupMembers(string groupId, CancellationToken cancellationToken = default)
-    {
-        using var ctx = new PrincipalContext(ContextType.Domain, _domain, _container);
-        using var group = GroupPrincipal.FindByIdentity(ctx, IdentityType.SamAccountName, groupId);
-        if (group is null)
-            return Task.FromResult<IReadOnlyList<string>>([]);
-
-        var members = group.GetMembers(recursive: true)
-            .OfType<UserPrincipal>()
-            .Where(u => u.Enabled == true)
-            .Select(u => u.SamAccountName)
-            .Where(name => !string.IsNullOrEmpty(name))
-            .ToList();
-
-        return Task.FromResult<IReadOnlyList<string>>(members);
-    }
-
-    public Task<IReadOnlyList<string>> UserGroups(string userId, CancellationToken cancellationToken = default)
-    {
-        using var ctx = new PrincipalContext(ContextType.Domain, _domain, _container);
-        using var user = UserPrincipal.FindByIdentity(ctx, IdentityType.SamAccountName, userId);
-        if (user is null)
-            return Task.FromResult<IReadOnlyList<string>>([]);
-
-        var groups = user.GetAuthorizationGroups()
-            .Select(g => g.SamAccountName)
-            .Where(name => !string.IsNullOrEmpty(name))
-            .ToList();
-
-        return Task.FromResult<IReadOnlyList<string>>(groups);
-    }
-
-    public async Task<bool> IsMember(string userId, string groupId, CancellationToken cancellationToken = default)
-    {
-        var members = await GroupMembers(groupId, cancellationToken);
-        return members.Contains(userId);
-    }
-}
-```
-
-</div>
-
-### نحوهٔ ثبت و استفاده در `Program.cs` (تزریق وابستگی‌ها)
-
-برای جایگزینی `StaticDirectory` با پیاده‌سازی سازمانی در ریشهٔ برنامه (`Program.cs`):
-
-**ثبت `HttpIdentityDirectory` با HttpClient و کش:**
-
-<div dir="ltr">
-
-```csharp
-builder.Services.AddMemoryCache();
-builder.Services.AddHttpClient<IDirectory, HttpIdentityDirectory>(client =>
-{
-    client.BaseAddress = new Uri(builder.Configuration["Identity:BaseUrl"] ?? "https://iam.company.local");
-    client.DefaultRequestHeaders.Add("Authorization", $"Bearer {builder.Configuration["Identity:ApiKey"]}");
-});
-```
-
-</div>
-
-**جایگزینی با Active Directory (اختیاری):**
-
-<div dir="ltr">
-
-```csharp
-IDirectory directory = new ActiveDirectoryService("corp.company.local", "DC=corp,DC=company,DC=local");
-```
-
-</div>
-
-**راه‌اندازی Engine با دایرکتوری تزریق‌شده:**
-
-<div dir="ltr">
-
-```csharp
-var directory = app.Services.GetRequiredService<IDirectory>();
-var engine = new Engine(store, directory);
-```
-
-</div>
+جزئیات معماری کلید API و BFF: [architecture.md](architecture.md#api-key-architecture).
 
 ---
 
@@ -384,7 +433,7 @@ await fetch("/api/inbox", { credentials: "include" });
 ```js
 app.get("/api/inbox", async (req, res) => {
   const userId = req.session.userId;
-  const r = await fetch(`${process.env.WF_ENGINE_URL}/v1/tasks?user=${encodeURIComponent(userId)}`, {
+  const r = await fetch(`${process.env.TASKFLOW_URL}/v1/tasks?user=${encodeURIComponent(userId)}`, {
     headers: {
       "X-API-Key": process.env.WF_API_KEYS.split(",")[0],
       "X-Actor-Id": userId,

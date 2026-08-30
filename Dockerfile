@@ -3,7 +3,7 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 COPY src/ ./src/
-RUN dotnet publish src/WorkflowEngine.Server/WorkflowEngine.Server.csproj -c Release -o /out
+RUN dotnet publish src/TaskFlow.Server/TaskFlow.Server.csproj -c Release -o /out
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
@@ -18,4 +18,4 @@ EXPOSE 8080
 USER app
 HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=5 \
     CMD curl -fsS http://127.0.0.1:8080/health >/dev/null || exit 1
-ENTRYPOINT ["dotnet", "WorkflowEngine.Server.dll"]
+ENTRYPOINT ["dotnet", "TaskFlow.Server.dll"]

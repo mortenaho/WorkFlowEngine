@@ -1,6 +1,6 @@
-using WorkflowEngine.Application;
-using WorkflowEngine.Domain;
-using WorkflowEngine.Infrastructure;
+using TaskFlow.Application;
+using TaskFlow.Domain;
+using TaskFlow.Infrastructure;
 
 var dir = new StaticDirectory(
     ["alice", "mortenaho", "cara", "dan"],
@@ -10,11 +10,12 @@ var dir = new StaticDirectory(
         ["finance"] = ["dan", "cara"],
     });
 var eng = new Engine(new MemoryStore(), dir);
+var orch = new ProcessOrchestrator(eng);
 
 var started = await eng.Start("purchase", "alice", new Dictionary<string, object?> { ["amount"] = 1.5e8 });
 Console.WriteLine($"start {started.DefinitionKey} {started.InstanceId}");
 
-var refer = await eng.Refer("alice", new ReferInput
+var parallel = await eng.Refer("alice", new ReferInput
 {
     DefinitionKey = started.DefinitionKey,
     ParentInstanceId = started.InstanceId,
@@ -22,22 +23,30 @@ var refer = await eng.Refer("alice", new ReferInput
     ToKind = AssigneeKind.Users,
     ToIds = ["mortenaho", "cara"],
 });
-Console.WriteLine($"refer {refer.InstanceId} tasks={refer.Tasks.Count}");
+Console.WriteLine($"parallel {parallel.InstanceId} tasks={parallel.Tasks.Count}");
 
-foreach (var task in refer.Tasks)
+ReferResult? legal = null;
+foreach (var task in parallel.Tasks)
 {
-    var done = await eng.CompleteTask(task.Id, task.AssigneeId, "تأیید شد");
-    Console.WriteLine($"complete {task.AssigneeId} allCompleted={done.Completion.AllCompleted}");
+    var advanced = await orch.CompleteAndAdvance(
+        task.Id,
+        task.AssigneeId,
+        "تأیید شد",
+        _ => new ReferInput
+        {
+            Title = "بررسی حقوقی",
+            ToKind = AssigneeKind.Group,
+            ToId = "legal",
+        });
+    Console.WriteLine(
+        $"complete {task.AssigneeId} allCompleted={advanced.Complete.Completion.AllCompleted} next={(advanced.Next is null ? "—" : advanced.Next.InstanceId)}");
+    if (advanced.Next is not null)
+        legal = advanced.Next;
 }
 
-var group = await eng.Refer("alice", new ReferInput
-{
-    DefinitionKey = started.DefinitionKey,
-    ParentInstanceId = started.InstanceId,
-    Title = "بررسی حقوقی",
-    ToKind = AssigneeKind.Group,
-    ToId = "legal",
-});
-await eng.ClaimTask(group.Task!.Id, "mortenaho");
-var last = await eng.CompleteTask(group.Task.Id, "mortenaho", "ok");
-Console.WriteLine($"group allCompleted={last.Completion.AllCompleted}");
+if (legal?.Task is null)
+    throw new InvalidOperationException("expected auto-advance to legal after parallel join");
+
+await eng.ClaimTask(legal.Task.Id, "mortenaho");
+var last = await eng.CompleteTask(legal.Task.Id, "mortenaho", "ok");
+Console.WriteLine($"legal allCompleted={last.Completion.AllCompleted}");
