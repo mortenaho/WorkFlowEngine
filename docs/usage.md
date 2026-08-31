@@ -63,14 +63,23 @@ dotnet run --project src/TaskFlow.Server
 <div dir="ltr">
 
 ```mermaid
-flowchart LR
-    ms1[Ordering API] -->|TaskFlow.Client| eng[TaskFlow.Server]
-    ms2[HR API] -->|TaskFlow.Client| eng
-    ms3[Legal BFF] -->|TaskFlow.Client| eng
-    eng --> db[(Postgres)]
+flowchart RL
+    ms1["Ordering API"]
+    ms2["HR API"]
+    ms3["Legal BFF"]
+    eng["TaskFlow.Server"]
+    db[("Postgres")]
 
-    style eng fill:#C2E5FF,stroke:#3DADFF
-    style db fill:#CDF4D3,stroke:#66D575
+    ms1 -->|"TaskFlow.Client"| eng
+    ms2 -->|"TaskFlow.Client"| eng
+    ms3 -->|"TaskFlow.Client"| eng
+    eng --> db
+
+    style eng fill:#C2E5FF,stroke:#3DADFF,color:#1a1a2e
+    style db fill:#CDF4D3,stroke:#66D575,color:#1a1a2e
+    style ms1 fill:#f3e5f5,stroke:#9c27b0,color:#1a1a2e
+    style ms2 fill:#f3e5f5,stroke:#9c27b0,color:#1a1a2e
+    style ms3 fill:#f3e5f5,stroke:#9c27b0,color:#1a1a2e
 ```
 
 </div>
@@ -199,19 +208,22 @@ var refer = await tf.AssignTo("alice", new AssignToInput
 
 ```mermaid
 flowchart TD
-    start([Start purchase / alice]) --> parallel["AssignTo Users: mortenaho + cara"]
-    parallel --> m[Task mortenaho]
-    parallel --> c[Task cara]
-    m --> join{AllCompleted?}
+    start(["Start purchase<br/>alice"]) --> parallel["AssignTo Users<br/>mortenaho + cara"]
+    parallel --> m["Task: mortenaho"]
+    parallel --> c["Task: cara"]
+    m --> join{"AllCompleted?"}
     c --> join
-    join -->|"نه — هنوز کسی باز است"| wait[صبر تا نفر بعدی]
-    join -->|"بله — همه تمام شدند"| next["AssignTo خودکار به legal"]
-    next --> claim[Claim توسط mortenaho]
-    claim --> finish([Complete])
+    join -->|"خیر — هنوز باز است"| wait["صبر تا نفر بعدی<br/>Next = null"]
+    join -->|"بله — همه تمام شدند"| next["AssignTo خودکار<br/>→ legal"]
+    next --> claim["Claim توسط mortenaho"]
+    claim --> finish(["Complete"])
 
-    style parallel fill:#C2E5FF,stroke:#3DADFF
-    style join fill:#FFECBD,stroke:#FFC943
-    style next fill:#CDF4D3,stroke:#66D575
+    style start fill:#DCCCFF,stroke:#874FFF,color:#1a1a2e
+    style parallel fill:#C2E5FF,stroke:#3DADFF,color:#1a1a2e
+    style join fill:#FFECBD,stroke:#FFC943,color:#1a1a2e
+    style next fill:#CDF4D3,stroke:#66D575,color:#1a1a2e
+    style wait fill:#f5f5f5,stroke:#bdbdbd,color:#616161
+    style finish fill:#DCCCFF,stroke:#874FFF,color:#1a1a2e
 ```
 
 </div>
@@ -221,23 +233,26 @@ flowchart TD
 <div dir="ltr">
 
 ```mermaid
-flowchart LR
-    root["Root instance alice"]
-    child1["Child instance موازی"]
-    child2["Child instance حقوقی"]
-    t1[Task mortenaho]
-    t2[Task cara]
-    t3[Task group legal]
+flowchart RL
+    root["Root instance<br/>alice"]
+    child1["Child: موازی"]
+    child2["Child: حقوقی"]
+    t1["Task mortenaho"]
+    t2["Task cara"]
+    t3["Task group legal"]
 
     root -->|"AssignTo Users"| child1
     child1 --> t1
     child1 --> t2
-    root -.->|"بعد از AllCompleted — AssignTo خودکار"| child2
+    root -.->|"AllCompleted → AssignTo"| child2
     child2 --> t3
 
-    style root fill:#DCCCFF,stroke:#874FFF
-    style child1 fill:#C2E5FF,stroke:#3DADFF
-    style child2 fill:#CDF4D3,stroke:#66D575
+    style root fill:#DCCCFF,stroke:#874FFF,color:#1a1a2e
+    style child1 fill:#C2E5FF,stroke:#3DADFF,color:#1a1a2e
+    style child2 fill:#CDF4D3,stroke:#66D575,color:#1a1a2e
+    style t1 fill:#e3f2fd,stroke:#1976d2,color:#1a1a2e
+    style t2 fill:#e3f2fd,stroke:#1976d2,color:#1a1a2e
+    style t3 fill:#e8f5e9,stroke:#388e3c,color:#1a1a2e
 ```
 
 </div>
@@ -253,19 +268,20 @@ flowchart LR
 
 ```mermaid
 sequenceDiagram
-    participant MS as Microservice + TaskFlow.Client
+    autonumber
+    participant MS as Microservice<br/>+ TaskFlow.Client
     participant Srv as TaskFlow.Server
     participant M as mortenaho
     participant C as cara
     participant L as legal
 
     MS->>Srv: Start purchase
-    MS->>Srv: AssignTo Users mortenaho + cara
+    MS->>Srv: AssignTo Users<br/>mortenaho + cara
     Srv-->>M: Task open
     Srv-->>C: Task open
     M->>MS: CompleteAndAssignTo
     MS->>Srv: CompleteTask
-    Note over MS: AllCompleted = false — Next خالی
+    Note over MS: AllCompleted = false<br/>Next = null
     C->>MS: CompleteAndAssignTo
     MS->>Srv: CompleteTask
     Note over MS: AllCompleted = true
@@ -408,7 +424,7 @@ builder.Services.AddTaskFlowClient(o =>
 
 </div>
 
-نمونهٔ دامنهٔ in-process (بدون HTTP): [`examples/Scenario`](../examples/Scenario/Program.cs). تست یکپارچهٔ SDK: `ClientSdkTests`.
+نمونهٔ دامنهٔ in-process (بدون HTTP): [`examples/Scenario`](https://github.com/mortenaho/WorkFlowEngine/blob/main/examples/Scenario/Program.cs). تست یکپارچهٔ SDK: `ClientSdkTests`.
 
 | مفهوم | معنی کوتاه |
 |--------|------------|

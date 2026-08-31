@@ -145,7 +145,25 @@ body,
   text-align: left;
 }
 
-/* ── Mermaid diagrams ───────────────────────────────────────── */
+/* Mermaid wrapper before JS replaces it */
+.VPDoc .language-mermaid {
+  direction: ltr;
+  text-align: center;
+  margin: 1.5rem auto;
+  padding: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  background: var(--diagram-bg);
+  border: 1px solid var(--diagram-border);
+  border-radius: 12px;
+}
+
+.VPDoc .language-mermaid pre {
+  margin: 0;
+  background: transparent !important;
+}
+
+/* Rendered SVG container */
 .VPDoc .mermaid,
 .VPDoc div.mermaid {
   direction: ltr;

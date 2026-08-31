@@ -300,6 +300,7 @@ flowchart RL
 
 ```mermaid
 sequenceDiagram
+  autonumber
   actor User
   participant React
   participant BFF as Your backend
@@ -308,9 +309,9 @@ sequenceDiagram
   User->>React: open inbox
   React->>BFF: GET /api/inbox
   Note over React,BFF: app session only<br/>engine key not in browser
-  BFF->>BFF: valid session → userId = mortenaho
+  BFF->>BFF: session → userId
   BFF->>Engine: GET /v1/tasks?user=mortenaho
-  Note over BFF,Engine: X-API-Key from server env<br/>X-Actor-Id from session
+  Note over BFF,Engine: X-API-Key (server env)<br/>X-Actor-Id (session)
   Engine-->>BFF: task list
   BFF-->>React: inbox JSON
 ```
