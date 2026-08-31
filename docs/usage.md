@@ -317,7 +317,98 @@ foreach (var task in parallel.Tasks)
 
 </div>
 
-نمونهٔ دامنهٔ in-process (بدون HTTP): [`examples/Scenario`](https://github.com/mortenaho/WorkFlowEngine/blob/main/examples/Scenario/Program.cs). تست یکپارچهٔ SDK روی سرور تست: `ClientSdkTests`.
+#### نمونه BFF: یک endpoint برای همهٔ تسک‌های موازی
+
+در پروداکشن کاربر مستقیم TaskFlow را صدا نمی‌زند. UI دکمه «تأیید» را می‌زند؛ **BFF شما** همان `CompleteAndAssignTo` را با قانون مرحلهٔ بعد صدا می‌کند.
+
+اگر پنج نفر موازی دارید، **پنج endpoint جدا لازم نیست** — همه از یک مسیر با `taskId` متفاوت استفاده می‌کنند:
+
+<div dir="ltr">
+
+```http
+POST /api/tasks/task-1/approve   ← mortenaho
+POST /api/tasks/task-2/approve   ← cara
+POST /api/tasks/task-3/approve   ← dan
+...
+```
+
+</div>
+
+همان handler، همان callback «مرحله بعد»؛ فقط وقتی **آخرین** نفر complete کرد `Next` پر می‌شود.
+
+<div dir="ltr">
+
+```csharp
+using TaskFlow.Application;
+using TaskFlow.Client;
+using TaskFlow.Domain;
+using Microsoft.AspNetCore.Mvc;
+
+[ApiController]
+[Route("api")]
+public sealed class TaskApprovalController : ControllerBase
+{
+    private readonly TaskFlowOrchestrator _orch;
+
+    public TaskApprovalController(TaskFlowOrchestrator orch) => _orch = orch;
+
+    public sealed class ApproveRequest
+    {
+        public string? Note { get; set; }
+    }
+
+    [HttpPost("tasks/{taskId}/approve")]
+    public async Task<IActionResult> Approve(string taskId, [FromBody] ApproveRequest body)
+    {
+        var userId = User.FindFirst("sub")?.Value ?? ""; // از SSO
+
+        var result = await _orch.CompleteAndAssignTo(
+            taskId,
+            userId,
+            body.Note ?? "تأیید شد",
+            NextStepAfterParallelReview); // ← یک بار تعریف شده
+
+        if (result.Next is not null)
+            return Ok(new { status = "all_done", next = result.Next });
+
+        return Ok(new { status = "waiting_for_others" });
+    }
+
+    // قانون مرحله بعد — یک جا
+    private static AssignToInput NextStepAfterParallelReview(CompleteResult _) =>
+        new()
+        {
+            Title = "بررسی حقوقی",
+            ToKind = AssigneeKind.Group,
+            ToId = "legal",
+        };
+}
+```
+
+</div>
+
+| complete توسط | `AllCompleted` | پاسخ BFF |
+|---------------|----------------|----------|
+| نفر ۱ از ۵ | `false` | `{ status: "waiting_for_others" }` |
+| نفر ۲ تا ۴ | `false` | همان |
+| نفر ۵ (آخر) | `true` | `{ status: "all_done", next: … legal }` |
+
+ثبت `TaskFlowOrchestrator` در `Program.cs` میکروسرویس:
+
+<div dir="ltr">
+
+```csharp
+builder.Services.AddTaskFlowClient(o =>
+{
+    o.BaseAddress = new Uri("http://taskflow:8080/");
+    o.ApiKey = builder.Configuration["TaskFlow:ApiKey"];
+});
+// AddTaskFlowClient خودش TaskFlowOrchestrator را هم register می‌کند
+```
+
+</div>
+
+نمونهٔ دامنهٔ in-process (بدون HTTP): [`examples/Scenario`](../examples/Scenario/Program.cs). تست یکپارچهٔ SDK: `ClientSdkTests`.
 
 | مفهوم | معنی کوتاه |
 |--------|------------|

@@ -42,6 +42,6 @@ flowchart TD
 
 ### نکتهٔ مهم
 
-موتور به‌تنهایی مرحلهٔ بعد را اجرا نمی‌کند؛ `CompleteAndAssignTo` فقط وقتی `allCompleted` شود callback شما را به یک `AssignTo` تبدیل می‌کند. توضیح کامل‌تر: [docs/usage.md](../docs/usage.md#تخصیص-موازی-و-رفتن-خودکار-به-مرحله-بعد).
+موتور به‌تنهایی مرحلهٔ بعد را اجرا نمی‌کند؛ `CompleteAndAssignTo` فقط وقتی `allCompleted` شود callback شما را به یک `AssignTo` تبدیل می‌کند. الگوی BFF (یک endpoint برای N کاربر موازی): [docs/usage.md](../docs/usage.md#نمونه-bff-یک-endpoint-برای-همهٔ-تسک‌های-موازی).
 
 </div>
