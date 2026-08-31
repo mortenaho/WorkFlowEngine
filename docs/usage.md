@@ -36,7 +36,7 @@ dotnet run --project src/TaskFlow.Server
 | تکمیل و پایان فرایند | `POST /v1/tasks/{id}/complete-and-end` |
 | فرایندهای کاربر | `GET /v1/users/{user}/processes` با فیلتر اختیاری `state=open`، `closed` یا `notStarted` |
 
-برای میکروسرویس‌ها مسیر پیشنهادی **SDK کلاینت** (`TaskFlow.Client`) است: یک بار `TaskFlow.Server` را بالا می‌آورید و هر سرویس فقط با HTTP به همان آدرس وصل می‌شود. در تست‌های واحد یا وقتی خودتان میزبان انجین هستید، می‌توانید `Engine` را داخل‌پردازشی هم بسازید. نمونهٔ `curl`: [`examples/curl.sh`](../examples/curl.sh).
+برای میکروسرویس‌ها مسیر پیشنهادی **SDK کلاینت** (`TaskFlow.Client`) است: یک بار `TaskFlow.Server` را بالا می‌آورید و هر سرویس فقط با HTTP به همان آدرس وصل می‌شود. در تست‌های واحد یا وقتی خودتان میزبان انجین هستید، می‌توانید `Engine` را داخل‌پردازشی هم بسازید. نمونهٔ `curl`: [`examples/curl.sh`](https://github.com/mortenaho/WorkFlowEngine/blob/main/examples/curl.sh).
 
 ---
 
@@ -317,7 +317,7 @@ foreach (var task in parallel.Tasks)
 
 </div>
 
-نمونهٔ دامنهٔ in-process (بدون HTTP): [`examples/Scenario`](../examples/Scenario/Program.cs). تست یکپارچهٔ SDK روی سرور تست: `ClientSdkTests`.
+نمونهٔ دامنهٔ in-process (بدون HTTP): [`examples/Scenario`](https://github.com/mortenaho/WorkFlowEngine/blob/main/examples/Scenario/Program.cs). تست یکپارچهٔ SDK روی سرور تست: `ClientSdkTests`.
 
 | مفهوم | معنی کوتاه |
 |--------|------------|

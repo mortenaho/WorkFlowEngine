@@ -1,0 +1,43 @@
+:root {
+  --vp-font-family-base: 'Vazirmatn', 'Segoe UI', Tahoma, sans-serif;
+  --vp-font-family-mono: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+}
+
+html {
+  direction: rtl;
+}
+
+.VPNav,
+.VPNavBar,
+.VPSidebar,
+.VPDoc .aside,
+.VPDoc .content {
+  direction: rtl;
+}
+
+.VPDoc .content-container {
+  text-align: right;
+}
+
+/* Code blocks stay LTR */
+div[class*='language-'],
+pre,
+code,
+.VPDoc div[dir='ltr'],
+.VPDoc .language-bash,
+.VPDoc .language-csharp,
+.VPDoc .language-json {
+  direction: ltr;
+  text-align: left;
+}
+
+.VPHero .name,
+.VPHero .text,
+.VPHero .tagline {
+  direction: rtl;
+}
+
+.VPFeature .title,
+.VPFeature .details {
+  text-align: right;
+}

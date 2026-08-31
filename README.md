@@ -167,6 +167,16 @@ docker compose up --build
 
 **معماری پیشنهادی با فرانت React:** مرورگر → API اپ شما (جلسه/کوکی) → انجین روی شبکهٔ داخلی با `X-API-Key`. اگر `fetch` مستقیم از React به پورت `8081` کلید را در هدر بگذارد، در Network مرورگر لو می‌رود.
 
+**مستندات وب:** [mortenaho.github.io/WorkFlowEngine](https://mortenaho.github.io/WorkFlowEngine/)
+
 راهنمای جامع: [docs/usage.md](docs/usage.md) · معماری کلید و BFF: [docs/architecture.md](docs/architecture.md#api-key-architecture) · پایگاه داده: [docs/database.md](docs/database.md)
+
+<div dir="ltr">
+
+```bash
+npm install && npm run docs:dev   # preview docs site locally
+```
+
+</div>
 
 </div>

@@ -442,6 +442,6 @@ WHERE id = :root_id OR parent_instance_id = :root_id;
 
 - [معماری سیستم](architecture.md)
 - [راهنمای جامع استفاده و API](usage.md)
-- [راهنمای راه‌اندازی سریع](../README.md)
+- [راهنمای راه‌اندازی سریع](https://github.com/mortenaho/WorkFlowEngine/blob/main/README.md)
 
 </div>
