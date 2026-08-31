@@ -109,15 +109,19 @@ dotnet run --project src/TaskFlow.Server
 <div dir="ltr">
 
 ```mermaid
-flowchart LR
-  start[Start processKey + initiator]
-  start --> def[definitionKey]
-  start --> root[root instanceId]
-  root --> refer[AssignTo + definitionKey]
-  refer --> child[child instanceId]
-  refer --> tasks[user or group Task]
-  tasks --> inbox[task inbox]
-  tasks --> done[Completion allCompleted]
+flowchart RL
+  start(["Start<br/>processKey + initiator"])
+  start --> def["definitionKey"]
+  start --> root["root instanceId"]
+  root --> refer["AssignTo<br/>+ definitionKey"]
+  refer --> child["child instanceId"]
+  refer --> tasks["Task(s)<br/>user / group / users"]
+  tasks --> inbox["کارتابل"]
+  tasks --> done["Completion<br/>allCompleted"]
+
+  style start fill:#DCCCFF,stroke:#874FFF,color:#1a1a2e
+  style refer fill:#C2E5FF,stroke:#3DADFF,color:#1a1a2e
+  style done fill:#CDF4D3,stroke:#66D575,color:#1a1a2e
 ```
 
 </div>
@@ -142,14 +146,17 @@ flowchart LR
 <div dir="ltr">
 
 ```mermaid
-flowchart LR
-    complete[["CompleteTask"]] --> check{AllCompleted?}
-    check -->|"خیر"| stop([فقط CompleteResult])
-    check -->|"بله"| refer[["AssignTo مرحله بعد"]]
-    refer --> out([CompleteAndAssignToResult با Next])
+flowchart TD
+    complete["CompleteTask"] --> check{"AllCompleted?"}
+    check -->|"خیر"| stop(["فقط CompleteResult<br/>Next = null"])
+    check -->|"بله"| refer["AssignTo<br/>مرحله بعد"]
+    refer --> out(["CompleteAndAssignToResult<br/>با Next"])
 
-    style check fill:#FFECBD,stroke:#FFC943
-    style refer fill:#CDF4D3,stroke:#66D575
+    style complete fill:#C2E5FF,stroke:#3DADFF,color:#1a1a2e
+    style check fill:#FFECBD,stroke:#FFC943,color:#1a1a2e
+    style refer fill:#CDF4D3,stroke:#66D575,color:#1a1a2e
+    style stop fill:#f5f5f5,stroke:#bdbdbd,color:#616161
+    style out fill:#DCCCFF,stroke:#874FFF,color:#1a1a2e
 ```
 
 </div>
@@ -272,10 +279,13 @@ erDiagram
 <div dir="ltr">
 
 ```mermaid
-flowchart LR
-  react[React browser]
-  engine[TaskFlow :8081]
-  react -->|"fetch + X-API-Key"| engine
+flowchart RL
+  react["React / Browser"]
+  engine["TaskFlow :8081"]
+  react -->|"❌ fetch + X-API-Key"| engine
+
+  style react fill:#ffcdd2,stroke:#e53935,color:#1a1a2e
+  style engine fill:#fff3e0,stroke:#fb8c00,color:#1a1a2e
 ```
 
 </div>
@@ -311,20 +321,27 @@ sequenceDiagram
 
 ```mermaid
 flowchart TB
-  subgraph internet [Internet]
-    browser[Browser / React]
+  subgraph internet ["🌐 Internet"]
+    browser["Browser / React"]
   end
-  subgraph edge [Public edge]
-    proxy[Reverse Proxy]
-    app[Backend / BFF]
+  subgraph edge ["🔒 Public edge"]
+    proxy["Reverse Proxy"]
+    app["Backend / BFF"]
   end
-  subgraph private [Private network]
-    engine[TaskFlow]
-    db[(Postgres)]
+  subgraph private ["🏠 Private network"]
+    engine["TaskFlow Engine"]
+    db[("Postgres")]
   end
-  browser -->|"HTTPS, app session"| proxy --> app
-  app -->|"X-API-Key server-side only"| engine
+
+  browser -->|"HTTPS + session"| proxy
+  proxy --> app
+  app -->|"X-API-Key (server-side)"| engine
   engine --> db
+
+  style browser fill:#C2E5FF,stroke:#3DADFF,color:#1a1a2e
+  style app fill:#CDF4D3,stroke:#66D575,color:#1a1a2e
+  style engine fill:#DCCCFF,stroke:#874FFF,color:#1a1a2e
+  style db fill:#e8f5e9,stroke:#43a047,color:#1a1a2e
 ```
 
 </div>
