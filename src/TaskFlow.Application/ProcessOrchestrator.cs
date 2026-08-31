@@ -1,21 +1,21 @@
 namespace TaskFlow.Application;
 
 /// <summary>
-/// Thin app-layer helper: complete a task and, when the referral is fully done,
-/// automatically create the next referral. Keeps Engine referral-based.
+/// Thin app-layer helper: complete a task and, when the assignment is fully done,
+/// automatically create the next assignment. Keeps Engine assignment-based.
 /// </summary>
 public sealed class ProcessOrchestrator(Engine engine)
 {
-    public async Task<AdvanceResult> CompleteAndAdvance(
+    public async Task<CompleteAndAssignToResult> CompleteAndAssignTo(
         string taskId,
         string actor,
         string note,
-        Func<CompleteResult, ReferInput?>? nextWhenAllCompleted = null,
+        Func<CompleteResult, AssignToInput?>? nextWhenAllCompleted = null,
         Dictionary<string, object?>? parameters = null,
         CancellationToken cancellationToken = default)
     {
         var done = await engine.CompleteTask(taskId, actor, note, parameters, cancellationToken);
-        ReferResult? next = null;
+        AssignToResult? next = null;
         if (done.Completion.AllCompleted && nextWhenAllCompleted is not null)
         {
             var input = nextWhenAllCompleted(done);
@@ -31,10 +31,10 @@ public sealed class ProcessOrchestrator(Engine engine)
                 }
 
                 var referrer = done.Task.AssignedBy.Length > 0 ? done.Task.AssignedBy : actor;
-                next = await engine.Refer(referrer, input, cancellationToken);
+                next = await engine.AssignTo(referrer, input, cancellationToken);
             }
         }
 
-        return new AdvanceResult { Complete = done, Next = next };
+        return new CompleteAndAssignToResult { Complete = done, Next = next };
     }
 }

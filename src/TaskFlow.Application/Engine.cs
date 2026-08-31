@@ -183,7 +183,7 @@ public sealed class Engine
         return d;
     }
 
-    public async Task<ReferResult> Refer(string actor, ReferInput input, CancellationToken cancellationToken = default)
+    public async Task<AssignToResult> AssignTo(string actor, AssignToInput input, CancellationToken cancellationToken = default)
     {
         actor = actor.Trim();
         if (actor.Length == 0)
@@ -213,11 +213,11 @@ public sealed class Engine
         {
             case AssigneeKind.User:
                 if (ids.Count != 1)
-                    throw EngineException.Invalid("user referral needs exactly one id");
+                    throw EngineException.Invalid("user assignment needs exactly one id");
                 break;
             case AssigneeKind.Group:
                 if (ids.Count != 1)
-                    throw EngineException.Invalid("group referral needs exactly one id");
+                    throw EngineException.Invalid("group assignment needs exactly one id");
                 if (_dir.EnforcesMembership)
                 {
                     var members = await _dir.GroupMembers(ids[0], cancellationToken);
@@ -227,7 +227,7 @@ public sealed class Engine
                 break;
             case AssigneeKind.Users:
                 if (ids.Count == 0)
-                    throw EngineException.Invalid("users referral needs at least one id");
+                    throw EngineException.Invalid("users assignment needs at least one id");
                 kind = AssigneeKind.User;
                 break;
             default:
@@ -271,7 +271,7 @@ public sealed class Engine
             await _store.SaveTask(t, cancellationToken);
             tasks.Add(t);
         }
-        var result = new ReferResult
+        var result = new AssignToResult
         {
             InstanceId = inst.Id,
             DefinitionKey = def.Key,

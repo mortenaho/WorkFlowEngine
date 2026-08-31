@@ -14,7 +14,7 @@ servers:
 tags:
   - name: Process
     description: شروع فرایند توسط initiator
-  - name: Referral
+  - name: Assignment
     description: ارجاع به شخص / گروه / چند نفر
   - name: Tasks
     description: کارتابل و تکمیل تسک
@@ -149,9 +149,9 @@ paths:
         "400":
           $ref: "#/components/responses/Error"
 
-  /v1/referrals:
+  /v1/assignments:
     post:
-      tags: [Referral]
+      tags: [Assignment]
       summary: ارجاع به شخص، گروه، یا چند نفر
       description: |
         `definitionKey` بگویید این ارجاع برای کدام فرایند است.
@@ -161,7 +161,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CreateReferral"
+              $ref: "#/components/schemas/CreateAssignment"
             examples:
               person:
                 summary: به یک شخص
@@ -199,7 +199,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ReferResult"
+                $ref: "#/components/schemas/AssignToResult"
         "400":
           $ref: "#/components/responses/Error"
         "404":
@@ -426,7 +426,7 @@ paths:
 
   /v1/instances/{id}/completion:
     get:
-      tags: [Referral]
+      tags: [Assignment]
       summary: آیا همه تسک‌های این درخواست تکمیل شده‌اند
       description: |
         `id` همان `instanceId` برگشتی از ارجاع است.
@@ -530,7 +530,7 @@ components:
           example: purchase
         instanceId:
           type: string
-    CreateReferral:
+    CreateAssignment:
       type: object
       required: [to]
       properties:
@@ -566,7 +566,7 @@ components:
           items:
             type: string
           description: برای users
-    ReferResult:
+    AssignToResult:
       type: object
       properties:
         instanceId:

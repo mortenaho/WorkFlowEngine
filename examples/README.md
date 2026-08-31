@@ -15,7 +15,7 @@ dotnet run --project examples/Scenario
 
 ## سناریوی خرید: موازی → حقوقی
 
-`alice` فرایند `purchase` را شروع می‌کند و هم‌زمان به `mortenaho` و `cara` ارجاع می‌دهد. تکمیل‌ها از `ProcessOrchestrator.CompleteAndAdvance` می‌گذرند؛ فقط وقتی **هر دو** تمام شدند، ارجاع گروهی به `legal` خودکار ساخته می‌شود. بعد `mortenaho` آن را Claim و Complete می‌کند.
+`alice` فرایند `purchase` را شروع می‌کند و هم‌زمان به `mortenaho` و `cara` ارجاع می‌دهد. تکمیل‌ها از `ProcessOrchestrator.CompleteAndAssignTo` می‌گذرند؛ فقط وقتی **هر دو** تمام شدند، ارجاع گروهی به `legal` خودکار ساخته می‌شود. بعد `mortenaho` آن را Claim و Complete می‌کند.
 
 ### دیاگرام ساده
 
@@ -23,13 +23,13 @@ dotnet run --project examples/Scenario
 
 ```mermaid
 flowchart TD
-    start([alice: Start purchase]) --> parallel["Refer موازی به mortenaho و cara"]
+    start([alice: Start purchase]) --> parallel["AssignTo موازی به mortenaho و cara"]
     parallel --> a[mortenaho تمام می‌کند]
     parallel --> b[cara تمام می‌کند]
     a --> gate{هر دو تمام شدند؟}
     b --> gate
     gate -->|"هنوز نه"| wait[Next خالی می‌ماند]
-    gate -->|"بله"| legal["Refer خودکار به گروه legal"]
+    gate -->|"بله"| legal["AssignTo خودکار به گروه legal"]
     legal --> claim[mortenaho Claim می‌کند]
     claim --> done([Complete])
 
@@ -42,6 +42,6 @@ flowchart TD
 
 ### نکتهٔ مهم
 
-موتور به‌تنهایی مرحلهٔ بعد را اجرا نمی‌کند؛ `CompleteAndAdvance` فقط وقتی `allCompleted` شود callback شما را به یک `Refer` تبدیل می‌کند. توضیح کامل‌تر: [docs/usage.md](../docs/usage.md#ارجاع-موازی-و-رفتن-خودکار-به-مرحله-بعد).
+موتور به‌تنهایی مرحلهٔ بعد را اجرا نمی‌کند؛ `CompleteAndAssignTo` فقط وقتی `allCompleted` شود callback شما را به یک `AssignTo` تبدیل می‌کند. توضیح کامل‌تر: [docs/usage.md](../docs/usage.md#تخصیص-موازی-و-رفتن-خودکار-به-مرحله-بعد).
 
 </div>

@@ -1,6 +1,6 @@
 namespace TaskFlow.Server;
 
-public sealed class CreateReferralRequest
+public sealed class CreateAssignmentRequest
 {
     public string DefinitionKey { get; set; } = "";
     public string ParentInstanceId { get; set; } = "";

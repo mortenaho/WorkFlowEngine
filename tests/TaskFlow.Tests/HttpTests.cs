@@ -40,7 +40,7 @@ public class HttpTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task HttpStartReferInboxComplete()
+    public async Task HttpStartAssignInboxComplete()
     {
         var w = await DoJson(HttpMethod.Post, "/v1/processes/start", "alice", new
         {
@@ -54,7 +54,7 @@ public class HttpTests : IAsyncLifetime
         Assert.Equal("purchase", started.DefinitionKey);
         Assert.False(string.IsNullOrEmpty(started.InstanceId));
 
-        w = await DoJson(HttpMethod.Post, "/v1/referrals", "alice", new
+        w = await DoJson(HttpMethod.Post, "/v1/assignments", "alice", new
         {
             definitionKey = started.DefinitionKey,
             parentInstanceId = started.InstanceId,
@@ -62,7 +62,7 @@ public class HttpTests : IAsyncLifetime
             to = new { kind = "users", ids = new[] { "mortenaho", "cara" } },
         });
         Assert.Equal(HttpStatusCode.Created, w.StatusCode);
-        var refer = await w.Content.ReadFromJsonAsync<ReferResult>(JsonConfig.Options);
+        var refer = await w.Content.ReadFromJsonAsync<AssignToResult>(JsonConfig.Options);
         Assert.NotNull(refer);
         Assert.False(string.IsNullOrEmpty(refer.InstanceId));
         Assert.Equal(2, refer.Tasks.Count);
@@ -116,7 +116,7 @@ public class HttpTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task ReferUsesFromInBody()
+    public async Task AssignToUsesFromInBody()
     {
         var w = await DoJson(HttpMethod.Post, "/v1/processes/start", "", new
         {
@@ -127,7 +127,7 @@ public class HttpTests : IAsyncLifetime
         var started = await w.Content.ReadFromJsonAsync<StartResult>(JsonConfig.Options);
         Assert.NotNull(started);
 
-        w = await DoJson(HttpMethod.Post, "/v1/referrals", "", new
+        w = await DoJson(HttpMethod.Post, "/v1/assignments", "", new
         {
             definitionKey = started.DefinitionKey,
             parentInstanceId = started.InstanceId,
@@ -135,7 +135,7 @@ public class HttpTests : IAsyncLifetime
             to = new { kind = "user", id = "mortenaho" },
         });
         Assert.Equal(HttpStatusCode.Created, w.StatusCode);
-        var refer = await w.Content.ReadFromJsonAsync<ReferResult>(JsonConfig.Options);
+        var refer = await w.Content.ReadFromJsonAsync<AssignToResult>(JsonConfig.Options);
         Assert.NotNull(refer);
         Assert.NotNull(refer.Task);
         Assert.Equal("alice", refer.Task.AssignedBy);
@@ -177,14 +177,14 @@ public class HttpTests : IAsyncLifetime
         });
         var started = await w.Content.ReadFromJsonAsync<StartResult>(JsonConfig.Options);
 
-        w = await DoJson(HttpMethod.Post, "/v1/referrals", "alice", new
+        w = await DoJson(HttpMethod.Post, "/v1/assignments", "alice", new
         {
             definitionKey = started!.DefinitionKey,
             parentInstanceId = started.InstanceId,
             to = new { kind = "group", id = "legal" },
         });
         Assert.Equal(HttpStatusCode.Created, w.StatusCode);
-        var refer = await w.Content.ReadFromJsonAsync<ReferResult>(JsonConfig.Options);
+        var refer = await w.Content.ReadFromJsonAsync<AssignToResult>(JsonConfig.Options);
         Assert.NotNull(refer?.Task);
         Assert.Equal(AssigneeKind.Group, refer.Task.AssigneeKind);
 
@@ -277,13 +277,13 @@ public class HttpTests : IAsyncLifetime
         Assert.Equal(0, mine.Open);
         Assert.Equal(1, mine.Total);
 
-        w = await DoJson(HttpMethod.Post, "/v1/referrals", "alice", new
+        w = await DoJson(HttpMethod.Post, "/v1/assignments", "alice", new
         {
             definitionKey = started!.DefinitionKey,
             parentInstanceId = started.InstanceId,
             to = new { kind = "users", ids = new[] { "mortenaho", "cara" } },
         });
-        var refer = await w.Content.ReadFromJsonAsync<ReferResult>(JsonConfig.Options);
+        var refer = await w.Content.ReadFromJsonAsync<AssignToResult>(JsonConfig.Options);
         var mortenahoTask = refer!.Tasks.First(t => t.AssigneeId == "mortenaho").Id;
         var caraTask = refer.Tasks.First(t => t.AssigneeId == "cara").Id;
 

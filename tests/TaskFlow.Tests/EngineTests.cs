@@ -14,11 +14,11 @@ public class EngineTests
     }
 
     [Fact]
-    public async Task ReferToPerson()
+    public async Task AssignToPerson()
     {
         var eng = Fixtures.NewEngine();
         var started = await eng.Start("purchase", "alice");
-        var refer = await eng.Refer("alice", new ReferInput
+        var refer = await eng.AssignTo("alice", new AssignToInput
         {
             DefinitionKey = started.DefinitionKey,
             ParentInstanceId = started.InstanceId,
@@ -35,11 +35,11 @@ public class EngineTests
     }
 
     [Fact]
-    public async Task ReferToGroup()
+    public async Task AssignToGroup()
     {
         var eng = Fixtures.NewEngine();
         var started = await eng.Start("purchase", "alice");
-        var refer = await eng.Refer("alice", new ReferInput
+        var refer = await eng.AssignTo("alice", new AssignToInput
         {
             DefinitionKey = started.DefinitionKey,
             ParentInstanceId = started.InstanceId,
@@ -74,7 +74,7 @@ public class EngineTests
     {
         var eng = Fixtures.NewEngine();
         var started = await eng.Start("purchase", "alice");
-        var refer = await eng.Refer("alice", new ReferInput
+        var refer = await eng.AssignTo("alice", new AssignToInput
         {
             DefinitionKey = started.DefinitionKey,
             ToKind = AssigneeKind.Group,
@@ -91,14 +91,14 @@ public class EngineTests
     {
         var eng = Fixtures.NewEngine();
         var started = await eng.Start("purchase", "alice");
-        await eng.Refer("alice", new ReferInput
+        await eng.AssignTo("alice", new AssignToInput
         {
             DefinitionKey = started.DefinitionKey,
             ParentInstanceId = started.InstanceId,
             ToKind = AssigneeKind.User,
             ToId = "mortenaho",
         });
-        await eng.Refer("alice", new ReferInput
+        await eng.AssignTo("alice", new AssignToInput
         {
             DefinitionKey = started.DefinitionKey,
             ParentInstanceId = started.InstanceId,
@@ -119,7 +119,7 @@ public class EngineTests
     {
         var eng = Fixtures.NewEngine();
         var started = await eng.Start("purchase", "alice");
-        var refer = await eng.Refer("alice", new ReferInput
+        var refer = await eng.AssignTo("alice", new AssignToInput
         {
             DefinitionKey = started.DefinitionKey,
             ParentInstanceId = started.InstanceId,
@@ -151,7 +151,7 @@ public class EngineTests
         var eng = Fixtures.NewEngine();
         var orch = new ProcessOrchestrator(eng);
         var started = await eng.Start("purchase", "alice");
-        var parallel = await eng.Refer("alice", new ReferInput
+        var parallel = await eng.AssignTo("alice", new AssignToInput
         {
             DefinitionKey = started.DefinitionKey,
             ParentInstanceId = started.InstanceId,
@@ -159,19 +159,19 @@ public class EngineTests
             ToIds = ["mortenaho", "cara"],
         });
 
-        var first = await orch.CompleteAndAdvance(
+        var first = await orch.CompleteAndAssignTo(
             parallel.Tasks[0].Id,
             parallel.Tasks[0].AssigneeId,
             "",
-            _ => new ReferInput { ToKind = AssigneeKind.Group, ToId = "legal", Title = "legal" });
+            _ => new AssignToInput { ToKind = AssigneeKind.Group, ToId = "legal", Title = "legal" });
         Assert.False(first.Complete.Completion.AllCompleted);
         Assert.Null(first.Next);
 
-        var second = await orch.CompleteAndAdvance(
+        var second = await orch.CompleteAndAssignTo(
             parallel.Tasks[1].Id,
             parallel.Tasks[1].AssigneeId,
             "",
-            _ => new ReferInput { ToKind = AssigneeKind.Group, ToId = "legal", Title = "legal" });
+            _ => new AssignToInput { ToKind = AssigneeKind.Group, ToId = "legal", Title = "legal" });
         Assert.True(second.Complete.Completion.AllCompleted);
         Assert.NotNull(second.Next);
         Assert.NotNull(second.Next.Task);
@@ -194,7 +194,7 @@ public class EngineTests
     {
         var eng = Fixtures.NewEngine();
         var started = await eng.Start("purchase", "alice");
-        var refer = await eng.Refer("alice", new ReferInput
+        var refer = await eng.AssignTo("alice", new AssignToInput
         {
             DefinitionKey = started.DefinitionKey,
             ToKind = AssigneeKind.User,
@@ -210,7 +210,7 @@ public class EngineTests
         var a = await eng.Start("employeeTermination", "hr", new Dictionary<string, object?> { ["employeeId"] = "1001" });
         var b = await eng.Start("employeeTermination", "hr", new Dictionary<string, object?> { ["employeeId"] = "1002" });
         await eng.Start("purchase", "alice");
-        await eng.Refer("hr", new ReferInput
+        await eng.AssignTo("hr", new AssignToInput
         {
             DefinitionKey = a.DefinitionKey,
             ParentInstanceId = a.InstanceId,
@@ -241,10 +241,10 @@ public class EngineTests
     }
 
     [Fact]
-    public async Task ReferUnknownDefinitionFails()
+    public async Task AssignToUnknownDefinitionFails()
     {
         var eng = Fixtures.NewEngine();
-        var ex = await Assert.ThrowsAsync<EngineException>(() => eng.Refer("alice", new ReferInput
+        var ex = await Assert.ThrowsAsync<EngineException>(() => eng.AssignTo("alice", new AssignToInput
         {
             DefinitionKey = "missing",
             ToKind = AssigneeKind.User,
@@ -254,11 +254,11 @@ public class EngineTests
     }
 
     [Fact]
-    public async Task ReferEmptyGroupFails()
+    public async Task AssignToEmptyGroupFails()
     {
         var eng = Fixtures.NewEngine();
         var started = await eng.Start("purchase", "alice");
-        var ex = await Assert.ThrowsAsync<EngineException>(() => eng.Refer("alice", new ReferInput
+        var ex = await Assert.ThrowsAsync<EngineException>(() => eng.AssignTo("alice", new AssignToInput
         {
             DefinitionKey = started.DefinitionKey,
             ToKind = AssigneeKind.Group,
@@ -272,7 +272,7 @@ public class EngineTests
     {
         var eng = new Engine(new MemoryStore(), new OpenDirectory());
         var started = await eng.Start("purchase", "102");
-        var referUser = await eng.Refer("102", new ReferInput
+        var referUser = await eng.AssignTo("102", new AssignToInput
         {
             DefinitionKey = started.DefinitionKey,
             ParentInstanceId = started.InstanceId,
@@ -281,7 +281,7 @@ public class EngineTests
         });
         Assert.Equal("205", referUser.Task!.AssigneeId);
 
-        var referGroup = await eng.Refer("102", new ReferInput
+        var referGroup = await eng.AssignTo("102", new AssignToInput
         {
             DefinitionKey = started.DefinitionKey,
             ParentInstanceId = started.InstanceId,
@@ -295,12 +295,12 @@ public class EngineTests
     }
 
     [Fact]
-    public async Task ReferMismatchedDefinitionKeyFails()
+    public async Task AssignToMismatchedDefinitionKeyFails()
     {
         var eng = Fixtures.NewEngine();
         var purchase = await eng.Start("purchase", "alice");
         await eng.Start("leave", "alice");
-        var ex = await Assert.ThrowsAsync<EngineException>(() => eng.Refer("alice", new ReferInput
+        var ex = await Assert.ThrowsAsync<EngineException>(() => eng.AssignTo("alice", new AssignToInput
         {
             DefinitionKey = "leave",
             ParentInstanceId = purchase.InstanceId,
@@ -315,7 +315,7 @@ public class EngineTests
     {
         var eng = Fixtures.NewEngine();
         var started = await eng.Start("purchase", "alice");
-        var refer = await eng.Refer("alice", new ReferInput
+        var refer = await eng.AssignTo("alice", new AssignToInput
         {
             DefinitionKey = started.DefinitionKey,
             ToKind = AssigneeKind.User,
@@ -331,7 +331,7 @@ public class EngineTests
     {
         var eng = Fixtures.NewEngine();
         var started = await eng.Start("purchase", "alice");
-        var refer = await eng.Refer("alice", new ReferInput
+        var refer = await eng.AssignTo("alice", new AssignToInput
         {
             DefinitionKey = started.DefinitionKey,
             ToKind = AssigneeKind.Group,
@@ -365,7 +365,7 @@ public class EngineTests
         {
             var started = await eng.Start("purchase", "alice");
             acmeId = started.InstanceId;
-            await eng.Refer("alice", new ReferInput
+            await eng.AssignTo("alice", new AssignToInput
             {
                 DefinitionKey = started.DefinitionKey,
                 ParentInstanceId = started.InstanceId,
@@ -398,14 +398,14 @@ public class EngineTests
     {
         var eng = Fixtures.NewEngine();
         var started = await eng.Start("purchase", "alice");
-        var mortenaho = await eng.Refer("alice", new ReferInput
+        var mortenaho = await eng.AssignTo("alice", new AssignToInput
         {
             DefinitionKey = started.DefinitionKey,
             ParentInstanceId = started.InstanceId,
             ToKind = AssigneeKind.User,
             ToId = "mortenaho",
         });
-        var cara = await eng.Refer("alice", new ReferInput
+        var cara = await eng.AssignTo("alice", new AssignToInput
         {
             DefinitionKey = started.DefinitionKey,
             ParentInstanceId = started.InstanceId,
@@ -427,7 +427,7 @@ public class EngineTests
         var root = await eng.GetInstance(started.InstanceId);
         Assert.Equal(InstanceStatus.Completed, root.Status);
 
-        var ex = await Assert.ThrowsAsync<EngineException>(() => eng.Refer("alice", new ReferInput
+        var ex = await Assert.ThrowsAsync<EngineException>(() => eng.AssignTo("alice", new AssignToInput
         {
             DefinitionKey = started.DefinitionKey,
             ParentInstanceId = started.InstanceId,
@@ -443,7 +443,7 @@ public class EngineTests
         var eng = Fixtures.NewEngine();
         await eng.Start("leave", "alice");
         var open = await eng.Start("purchase", "alice");
-        await eng.Refer("alice", new ReferInput
+        await eng.AssignTo("alice", new AssignToInput
         {
             DefinitionKey = open.DefinitionKey,
             ParentInstanceId = open.InstanceId,
@@ -451,7 +451,7 @@ public class EngineTests
             ToId = "mortenaho",
         });
         var closing = await eng.Start("travel", "alice");
-        var refer = await eng.Refer("alice", new ReferInput
+        var refer = await eng.AssignTo("alice", new AssignToInput
         {
             DefinitionKey = closing.DefinitionKey,
             ParentInstanceId = closing.InstanceId,

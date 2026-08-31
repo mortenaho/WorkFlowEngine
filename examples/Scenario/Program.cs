@@ -15,7 +15,7 @@ var orch = new ProcessOrchestrator(eng);
 var started = await eng.Start("purchase", "alice", new Dictionary<string, object?> { ["amount"] = 1.5e8 });
 Console.WriteLine($"start {started.DefinitionKey} {started.InstanceId}");
 
-var parallel = await eng.Refer("alice", new ReferInput
+var parallel = await eng.AssignTo("alice", new AssignToInput
 {
     DefinitionKey = started.DefinitionKey,
     ParentInstanceId = started.InstanceId,
@@ -25,14 +25,14 @@ var parallel = await eng.Refer("alice", new ReferInput
 });
 Console.WriteLine($"parallel {parallel.InstanceId} tasks={parallel.Tasks.Count}");
 
-ReferResult? legal = null;
+AssignToResult? legal = null;
 foreach (var task in parallel.Tasks)
 {
-    var advanced = await orch.CompleteAndAdvance(
+    var advanced = await orch.CompleteAndAssignTo(
         task.Id,
         task.AssigneeId,
         "تأیید شد",
-        _ => new ReferInput
+        _ => new AssignToInput
         {
             Title = "بررسی حقوقی",
             ToKind = AssigneeKind.Group,

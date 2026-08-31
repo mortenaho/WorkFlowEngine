@@ -6,7 +6,7 @@ services:
       POSTGRES_PASSWORD: workflow
       POSTGRES_DB: workflow
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -19,14 +19,14 @@ services:
   engine:
     build: .
     ports:
-      - "8081:8080"
+      - "8082:8080"
     environment:
       ADDR: ":8080"
       ASPNETCORE_URLS: http://0.0.0.0:8080
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
       # Required outside Development. Copy .env.example to .env (compose loads .env automatically).
       WF_API_KEYS: ${WF_API_KEYS:?Set WF_API_KEYS (copy .env.example to .env)}
-      DATABASE_URL: postgres://workflow:workflow@postgres:5432/workflow?sslmode=disable
+      DATABASE_URL: Host=postgres;Port=5432;Username=workflow;Password=workflow;Database=workflow;SSL Mode=Disable
     depends_on:
       postgres:
         condition: service_healthy

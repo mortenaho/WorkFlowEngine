@@ -21,7 +21,7 @@ public class ScenarioTests
         var list = await eng.ListByProcessKey("employeeTermination");
         Assert.Equal(2, list.Total);
 
-        var legal = await eng.Refer("alice", new ReferInput
+        var legal = await eng.AssignTo("alice", new AssignToInput
         {
             DefinitionKey = emp1.DefinitionKey,
             ParentInstanceId = emp1.InstanceId,
@@ -32,7 +32,7 @@ public class ScenarioTests
         var mortenahoInbox = await eng.PendingTasks("mortenaho", "");
         Assert.Single(mortenahoInbox);
 
-        var groupRef = await eng.Refer("alice", new ReferInput
+        var groupRef = await eng.AssignTo("alice", new AssignToInput
         {
             DefinitionKey = emp2.DefinitionKey,
             ParentInstanceId = emp2.InstanceId,
@@ -46,7 +46,7 @@ public class ScenarioTests
         await eng.CompleteTask(groupRef.Task.Id, "mortenaho", "ok");
         await eng.CompleteTask(legal.Task!.Id, "mortenaho", "ok");
 
-        var multi = await eng.Refer("alice", new ReferInput
+        var multi = await eng.AssignTo("alice", new AssignToInput
         {
             DefinitionKey = emp1.DefinitionKey,
             ParentInstanceId = emp1.InstanceId,

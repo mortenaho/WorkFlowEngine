@@ -113,7 +113,7 @@ flowchart LR
   start[Start processKey + initiator]
   start --> def[definitionKey]
   start --> root[root instanceId]
-  root --> refer[Refer + definitionKey]
+  root --> refer[AssignTo + definitionKey]
   refer --> child[child instanceId]
   refer --> tasks[user or group Task]
   tasks --> inbox[task inbox]
@@ -122,12 +122,12 @@ flowchart LR
 
 </div>
 
-از `Start` یک اینستنس ریشه و `definitionKey` ساخته می‌شود. هر `Refer` یک اینستنس فرزند و تسک(های) کارتابل ایجاد می‌کند.
+از `Start` یک اینستنس ریشه و `definitionKey` ساخته می‌شود. هر `AssignTo` یک اینستنس فرزند و تسک(های) کارتابل ایجاد می‌کند.
 
 | سطح | مفهوم و نقش |
 |------|-------------|
 | Definition | تعریف نوع فرایند با شناسهٔ یکتای `key` (بدون نیاز به دیاگرام‌های گرافیکی) |
-| Instance | نمونهٔ اجرایی فرایند؛ عملیات `Start` یک اینستنس ریشه می‌سازد و هر ارجاع (`Refer`) یک اینستنس فرزند ایجاد می‌کند |
+| Instance | نمونهٔ اجرایی فرایند؛ عملیات `Start` یک اینستنس ریشه می‌سازد و هر ارجاع (`AssignTo`) یک اینستنس فرزند ایجاد می‌کند |
 | Task | رکورد وظیفه در کارتابل؛ انتساب به کاربر (`user`) یا گروه (`group`) |
 
 - **وضعیت اینستنس:** تا زمانی که وظایف باز داشته باشد در وضعیت `running` است؛ پس از تکمیل تمامی وظایفِ مرتبط با همان ارجاع به `completed` تغییر می‌یابد.
@@ -135,9 +135,9 @@ flowchart LR
 
 ### رفتن خودکار به مرحله بعد (ProcessOrchestrator)
 
-`Engine` فقط primitiveها را دارد: `Start`، `Refer`، `CompleteTask`، `Completion`. مسیر «بعد از این مرحله، مرحلهٔ فلان» داخل definition ذخیره نمی‌شود.
+`Engine` فقط primitiveها را دارد: `Start`، `AssignTo`، `CompleteTask`، `Completion`. مسیر «بعد از این مرحله، مرحلهٔ فلان» داخل definition ذخیره نمی‌شود.
 
-برای سناریوهای ثابت (مثلاً موازی → حقوقی)، کلاس `ProcessOrchestrator` روی `CompleteTask` می‌نشیند و وقتی `allCompleted` شد همان callback شما را به یک `Refer` جدید تبدیل می‌کند:
+برای سناریوهای ثابت (مثلاً موازی → حقوقی)، کلاس `ProcessOrchestrator` روی `CompleteTask` می‌نشیند و وقتی `allCompleted` شد همان callback شما را به یک `AssignTo` جدید تبدیل می‌کند:
 
 <div dir="ltr">
 
@@ -145,8 +145,8 @@ flowchart LR
 flowchart LR
     complete[["CompleteTask"]] --> check{AllCompleted?}
     check -->|"خیر"| stop([فقط CompleteResult])
-    check -->|"بله"| refer[["Refer مرحله بعد"]]
-    refer --> out([AdvanceResult با Next])
+    check -->|"بله"| refer[["AssignTo مرحله بعد"]]
+    refer --> out([CompleteAndAssignToResult با Next])
 
     style check fill:#FFECBD,stroke:#FFC943
     style refer fill:#CDF4D3,stroke:#66D575
@@ -154,7 +154,7 @@ flowchart LR
 
 </div>
 
-شرح روان‌تر با دیاگرام سناریو و نمونه کد: [usage.md — ارجاع موازی و رفتن خودکار](usage.md#ارجاع-موازی-و-رفتن-خودکار-به-مرحله-بعد).
+شرح روان‌تر با دیاگرام سناریو و نمونه کد: [usage.md — ارجاع موازی و رفتن خودکار](usage.md#تخصیص-موازی-و-رفتن-خودکار-به-مرحله-بعد).
 
 ---
 
@@ -199,7 +199,7 @@ erDiagram
 
 </div>
 
-متد `Start` در صورت عدم وجود تعریف برای `processKey`، آن را به‌طور خودکار ایجاد می‌نماید. اما ارجاع (`Refer`) در صورتی که تعریف فرایند از پیش ثبت نشده باشد، با خطای عدم یافتن مواجه خواهد شد.
+متد `Start` در صورت عدم وجود تعریف برای `processKey`، آن را به‌طور خودکار ایجاد می‌نماید. اما ارجاع (`AssignTo`) در صورتی که تعریف فرایند از پیش ثبت نشده باشد، با خطای عدم یافتن مواجه خواهد شد.
 
 ---
 
@@ -211,7 +211,7 @@ erDiagram
 ۲. یک نمونهٔ اجرای ریشه با وضعیت `running`، ایجادکننده (`initiator`) و پارامترهای ارسالی می‌سازد.  
 ۳. مقادیر `{ definitionKey, instanceId }` را برمی‌گرداند. در این مرحله تسکی ساخته نمی‌شود.
 
-### ۲. ارجاع کار (Refer)
+### ۲. تخصیص کار (AssignTo)
 
 ۱. مقدار `definitionKey` اجباری است (یا در صورت عدم ارسال، از `parentInstanceId` به ارث می‌رسد).  
 ۲. یک نمونهٔ اجرای **جدید** ایجاد می‌کند (اگر `parentInstanceId` داده شود، به اینستنس ریشه متصل می‌گردد).  
@@ -232,7 +232,7 @@ erDiagram
 
 - تکمیل تسک شخصی صرفاً توسط همان فرد امکان‌پذیر است.
 - تکمیل تسک گروهی تنها توسط عضوی که تسک را تحویل گرفته (Claim کرده) مجاز است.
-- اگر بخواهید بعد از `allCompleted` خودکار ارجاع بعدی ساخته شود، از `ProcessOrchestrator.CompleteAndAdvance` استفاده کنید (جزئیات در [usage.md](usage.md#ارجاع-موازی-و-رفتن-خودکار-به-مرحله-بعد)).
+- اگر بخواهید بعد از `allCompleted` خودکار ارجاع بعدی ساخته شود، از `ProcessOrchestrator.CompleteAndAssignTo` استفاده کنید (جزئیات در [usage.md](usage.md#تخصیص-موازی-و-رفتن-خودکار-به-مرحله-بعد)).
 
 ### ۵. تکمیل و بستن کل فرایند (Complete and End)
 

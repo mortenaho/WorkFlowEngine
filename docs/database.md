@@ -79,7 +79,7 @@ DATABASE_URL=postgres://workflow:workflow@postgres:5432/workflow?sslmode=disable
 tenant (tenant_id)
   └── definition
         └── root instance       parent_instance_id = ''
-              └── child instance   one row per Refer
+              └── child instance   one row per AssignTo
                     └── task(s)      inbox assignee: user or group
 ```
 
@@ -87,13 +87,13 @@ tenant (tenant_id)
 
 - `definition`: نوع فرایند (مثلاً `purchase`)
 - `root instance`: خروجی متد `Start`
-- `child instance`: هر عملیات `Refer` یک ردیف جدید
+- `child instance`: هر عملیات `AssignTo` یک ردیف جدید
 - `task`: وظیفهٔ کارتابل برای کاربر یا گروه
 
 **قواعد ساختاری مهم:**
 
 - متد `Start` هیچ تسکی ایجاد نمی‌کند؛ صرفاً تعریف فرایند (در صورت نبود) و یک نمونهٔ اجرای ریشه می‌سازد.
-- هر عملیات `Refer` یک نمونهٔ اجرای **جدید** ایجاد می‌کند؛ در صورت ارسال `parentInstanceId`، این نمونه به ریشه متصل می‌گردد.
+- هر عملیات `AssignTo` یک نمونهٔ اجرای **جدید** ایجاد می‌کند؛ در صورت ارسال `parentInstanceId`، این نمونه به ریشه متصل می‌گردد.
 - وظایف (`tasks`) مستقیماً به نمونهٔ اجرای **ارجاع** متصل هستند.
 - جهت دریافت کلیهٔ وظایف یک فرایند، کوئری جستجو هر دو فیلد `instance_id` و `parent_instance_id` را بررسی می‌کند.
 
@@ -362,7 +362,7 @@ COMMIT;
 |----|--------------------|--------|------------|------|
 | `root_1` | `''` | `running` | `alice` | `{"amount": 150000000}` |
 
-### ۲. ارجاع کار به گروه حقوقی (Refer)
+### ۲. تخصیص کار به گروه حقوقی (AssignTo)
 
 یک رکورد فرزند در جدول `instances` و یک رکورد تسک در جدول `tasks` ایجاد می‌شود:
 

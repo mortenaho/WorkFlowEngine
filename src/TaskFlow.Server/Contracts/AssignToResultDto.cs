@@ -1,6 +1,6 @@
 namespace TaskFlow.Server;
 
-public sealed class ReferResultDto
+public sealed class AssignToResultDto
 {
     public string InstanceId { get; set; } = "";
     public string DefinitionKey { get; set; } = "";

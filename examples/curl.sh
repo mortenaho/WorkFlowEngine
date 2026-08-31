@@ -20,7 +20,7 @@ DEF=$(echo "$START" | python3 -c 'import json,sys; print(json.load(sys.stdin)["d
 ROOT=$(echo "$START" | python3 -c 'import json,sys; print(json.load(sys.stdin)["instanceId"])')
 
 echo "== refer to mortenaho + cara =="
-REF=$(json alice -X POST "$BASE/v1/referrals" -d "$(cat <<EOF
+REF=$(json alice -X POST "$BASE/v1/assignments" -d "$(cat <<EOF
 {"definitionKey":"$DEF","parentInstanceId":"$ROOT","title":"تأیید موازی","to":{"kind":"users","ids":["mortenaho","cara"]}}
 EOF
 )")
@@ -49,7 +49,7 @@ json alice "$BASE/v1/instances/$RID/completion"
 echo
 
 echo "== refer to group legal =="
-json alice -X POST "$BASE/v1/referrals" -d "$(cat <<EOF
+json alice -X POST "$BASE/v1/assignments" -d "$(cat <<EOF
 {"definitionKey":"$DEF","parentInstanceId":"$ROOT","title":"بررسی حقوقی","to":{"kind":"group","id":"legal"}}
 EOF
 )"
@@ -66,7 +66,7 @@ echo "== new process: complete-and-end =="
 START2=$(json alice -X POST "$BASE/v1/processes/start" \
   -d '{"processKey":"purchase","initiator":"alice"}')
 ROOT2=$(echo "$START2" | python3 -c 'import json,sys; print(json.load(sys.stdin)["instanceId"])')
-REF2=$(json alice -X POST "$BASE/v1/referrals" -d "$(cat <<EOF
+REF2=$(json alice -X POST "$BASE/v1/assignments" -d "$(cat <<EOF
 {"definitionKey":"$DEF","parentInstanceId":"$ROOT2","title":"تأیید نهایی","to":{"kind":"users","ids":["mortenaho","cara"]}}
 EOF
 )")

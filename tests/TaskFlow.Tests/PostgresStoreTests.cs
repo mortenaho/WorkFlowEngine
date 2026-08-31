@@ -3,7 +3,7 @@ namespace TaskFlow.Tests;
 public class PostgresStoreTests
 {
     [Fact]
-    public async Task PostgresStartReferComplete()
+    public async Task PostgresStartAssignComplete()
     {
         var dsn = Environment.GetEnvironmentVariable("DATABASE_URL");
         if (string.IsNullOrEmpty(dsn))
@@ -17,7 +17,7 @@ public class PostgresStoreTests
         var eng = new Engine(store, dir);
         using var tenant = TenantContext.Use("test-" + Ids.New()[..8]);
         var started = await eng.Start("purchase-pg", "alice", new Dictionary<string, object?> { ["n"] = 1 });
-        var refer = await eng.Refer("alice", new ReferInput
+        var refer = await eng.AssignTo("alice", new AssignToInput
         {
             DefinitionKey = started.DefinitionKey,
             ParentInstanceId = started.InstanceId,

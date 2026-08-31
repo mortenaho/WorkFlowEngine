@@ -27,7 +27,7 @@ dotnet run --project src/TaskFlow.Server
 |--------|---------------------------|
 | شروع فرایند | `POST /v1/processes/start` با بدنهٔ `{ "processKey", "initiator", "parameters?" }` |
 | لیست اجراها | `GET /v1/processes/{processKey}/instances` |
-| ارجاع کار | `POST /v1/referrals` با بدنهٔ `{ "definitionKey", "parentInstanceId?", "to" }` |
+| ارجاع کار | `POST /v1/assignments` با بدنهٔ `{ "definitionKey", "parentInstanceId?", "to" }` |
 | کارتابل وظایف | `GET /v1/tasks?user=mortenaho` یا `GET /v1/tasks?group=legal` |
 | تحویل گرفتن تسک (Claim) | `POST /v1/tasks/{id}/claim` |
 | لغو تحویل تسک (Unclaim) | `POST /v1/tasks/{id}/unclaim` |
@@ -46,7 +46,7 @@ dotnet run --project src/TaskFlow.Server
 |------|-----------------|
 | `processKey` | کلید شناسهٔ نوع فرایند (مانند `purchase` یا `employeeTermination`) |
 | `definitionKey` | کلید تعریف ثبت‌شده برای فرایند که در خروجی متد شروع بازگردانده می‌شود |
-| `instanceId` | شناسهٔ یک نمونهٔ اجرایی؛ فراخوانی `Start` نمونهٔ ریشه را می‌سازد و هر ارجاع (`Refer`) یک نمونهٔ جدید ایجاد می‌کند |
+| `instanceId` | شناسهٔ یک نمونهٔ اجرایی؛ فراخوانی `Start` نمونهٔ ریشه را می‌سازد و هر ارجاع (`AssignTo`) یک نمونهٔ جدید ایجاد می‌کند |
 | `Task` | رکورد وظیفه در کارتابل که به یک کاربر یا یک گروه تخصیص یافته است |
 | `Inbox` / `Tasks` | وظایف در وضعیت باز (`open`) متعلق به یک کاربر (شامل وظایف فردی و گروه‌های عضو) یا یک گروه |
 
@@ -169,7 +169,7 @@ var started = await tf.Start(
 ```csharp
 using TaskFlow.Domain;
 
-var refer = await tf.Refer("alice", new ReferInput
+var refer = await tf.AssignTo("alice", new AssignToInput
 {
     DefinitionKey = started.DefinitionKey,
     ParentInstanceId = started.InstanceId,
@@ -182,16 +182,16 @@ var refer = await tf.Refer("alice", new ReferInput
 
 </div>
 
-### ارجاع موازی و رفتن خودکار به مرحله بعد
+### تخصیص موازی و رفتن خودکار به مرحله بعد
 
 موتور خودش «مرحلهٔ بعد» را بلد نیست؛ فقط ارجاع می‌سازد و با `allCompleted` می‌گوید آیا آن ارجاع تمام شده یا نه. روی کلاینت از `TaskFlowOrchestrator` استفاده کنید (معادل HTTPیِ `ProcessOrchestrator`).
 
 **به زبان ساده:**
 
-1. با `Refer` و `Users` کار را هم‌زمان به چند نفر بفرست.  
-2. هر نفر تسک خودش را با `CompleteAndAdvance` تمام می‌کند.  
+1. با `AssignTo` و `Users` کار را هم‌زمان به چند نفر بفرست.  
+2. هر نفر تسک خودش را با `CompleteAndAssignTo` تمام می‌کند.  
 3. تا وقتی همه تمام نکرده‌اند، هیچ ارجاع جدیدی ساخته نمی‌شود.  
-4. وقتی آخرین نفر تمام کرد (`allCompleted = true`)، اورکستریتور همان لحظه `Refer` بعدی را روی سرور می‌زند.
+4. وقتی آخرین نفر تمام کرد (`allCompleted = true`)، اورکستریتور همان لحظه `AssignTo` بعدی را روی سرور می‌زند.
 
 #### تصویر کلی جریان
 
@@ -199,13 +199,13 @@ var refer = await tf.Refer("alice", new ReferInput
 
 ```mermaid
 flowchart TD
-    start([Start purchase / alice]) --> parallel["Refer Users: mortenaho + cara"]
+    start([Start purchase / alice]) --> parallel["AssignTo Users: mortenaho + cara"]
     parallel --> m[Task mortenaho]
     parallel --> c[Task cara]
     m --> join{AllCompleted?}
     c --> join
     join -->|"نه — هنوز کسی باز است"| wait[صبر تا نفر بعدی]
-    join -->|"بله — همه تمام شدند"| next["Refer خودکار به legal"]
+    join -->|"بله — همه تمام شدند"| next["AssignTo خودکار به legal"]
     next --> claim[Claim توسط mortenaho]
     claim --> finish([Complete])
 
@@ -229,10 +229,10 @@ flowchart LR
     t2[Task cara]
     t3[Task group legal]
 
-    root -->|"Refer Users"| child1
+    root -->|"AssignTo Users"| child1
     child1 --> t1
     child1 --> t2
-    root -.->|"بعد از AllCompleted — Refer خودکار"| child2
+    root -.->|"بعد از AllCompleted — AssignTo خودکار"| child2
     child2 --> t3
 
     style root fill:#DCCCFF,stroke:#874FFF
@@ -243,7 +243,7 @@ flowchart LR
 </div>
 
 - ریشه (`Start`) پرونده را نگه می‌دارد.  
-- هر `Refer` یک فرزند جدید می‌سازد؛ تسک‌ها زیر همان فرزند می‌نشینند.  
+- هر `AssignTo` یک فرزند جدید می‌سازد؛ تسک‌ها زیر همان فرزند می‌نشینند.  
 - `AllCompleted` فقط برای **همان فرزند** حساب می‌شود، نه کل پرونده.  
 - ارجاع بعدی دوباره به همان ریشه وصل می‌شود (`ParentInstanceId`).
 
@@ -260,16 +260,16 @@ sequenceDiagram
     participant L as legal
 
     MS->>Srv: Start purchase
-    MS->>Srv: Refer Users mortenaho + cara
+    MS->>Srv: AssignTo Users mortenaho + cara
     Srv-->>M: Task open
     Srv-->>C: Task open
-    M->>MS: CompleteAndAdvance
+    M->>MS: CompleteAndAssignTo
     MS->>Srv: CompleteTask
     Note over MS: AllCompleted = false — Next خالی
-    C->>MS: CompleteAndAdvance
+    C->>MS: CompleteAndAssignTo
     MS->>Srv: CompleteTask
     Note over MS: AllCompleted = true
-    MS->>Srv: Refer Group legal
+    MS->>Srv: AssignTo Group legal
     Srv-->>L: Task open
     M->>MS: Claim + Complete
     MS->>Srv: claim / complete
@@ -286,7 +286,7 @@ sequenceDiagram
 ```csharp
 var orch = new TaskFlowOrchestrator(tf);
 
-var parallel = await tf.Refer("alice", new ReferInput
+var parallel = await tf.AssignTo("alice", new AssignToInput
 {
     DefinitionKey = started.DefinitionKey,
     ParentInstanceId = started.InstanceId,
@@ -295,14 +295,14 @@ var parallel = await tf.Refer("alice", new ReferInput
     ToIds = ["mortenaho", "cara"],
 });
 
-ReferResult? legal = null;
+AssignToResult? legal = null;
 foreach (var task in parallel.Tasks)
 {
-    var advanced = await orch.CompleteAndAdvance(
+    var advanced = await orch.CompleteAndAssignTo(
         task.Id,
         task.AssigneeId,
         "تأیید شد",
-        _ => new ReferInput
+        _ => new AssignToInput
         {
             Title = "بررسی حقوقی",
             ToKind = AssigneeKind.Group,
@@ -324,7 +324,7 @@ foreach (var task in parallel.Tasks)
 | `Users` + `ToIds` | چند تسک موازی؛ **همه** باید تمام شوند |
 | `Group` + `ToId` | یک تسک مشترک؛ یکی Claim می‌کند |
 | `CompleteTask` | فقط همین تسک را می‌بندد |
-| `CompleteAndAdvance` | همان + در صورت `AllCompleted`، `Refer` بعدی |
+| `CompleteAndAssignTo` | همان + در صورت `AllCompleted`، `AssignTo` بعدی |
 | `advanced.Next` | ارجاع تازه؛ تا قبل از join برابر `null` است |
 
 ### کارتابل، تکمیل، و فرایندهای کاربر
@@ -497,14 +497,14 @@ GET /v1/processes/employeeTermination/instances
 
 فهرست فوق فقط نمونه‌های ریشه (Start) را بازمی‌گرداند؛ وظایف مربوط به ارجاع‌های فرزند نیز در فیلد `tasks` همان نمونه لیست می‌شوند.
 
-### ۲. ارجاع کار (Referral)
+### ۲. ارجاع کار (Assignment)
 
 `parentInstanceId` همان `instanceId` دریافتی از پاسخ Start است.
 
 <div dir="ltr">
 
 ```json
-POST /v1/referrals
+POST /v1/assignments
 {
   "definitionKey": "purchase",
   "parentInstanceId": "<instanceId from start>",
@@ -557,7 +557,7 @@ POST /v1/tasks/{id}/claim
 <div dir="ltr">
 
 ```bash
-GET /v1/instances/{referralInstanceId}/completion
+GET /v1/instances/{assignmentInstanceId}/completion
 ```
 
 </div>

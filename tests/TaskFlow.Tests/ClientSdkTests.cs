@@ -32,7 +32,7 @@ public class ClientSdkTests : IAsyncLifetime
         var started = await _client.Start("purchase", "alice", new Dictionary<string, object?> { ["amount"] = 10 });
         Assert.Equal("purchase", started.DefinitionKey);
 
-        var refer = await _client.Refer("alice", new ReferInput
+        var refer = await _client.AssignTo("alice", new AssignToInput
         {
             DefinitionKey = started.DefinitionKey,
             ParentInstanceId = started.InstanceId,
@@ -46,14 +46,14 @@ public class ClientSdkTests : IAsyncLifetime
         Assert.Single(inbox);
 
         var orch = new TaskFlowOrchestrator(_client);
-        ReferResult? next = null;
+        AssignToResult? next = null;
         foreach (var task in refer.Tasks)
         {
-            var advanced = await orch.CompleteAndAdvance(
+            var advanced = await orch.CompleteAndAssignTo(
                 task.Id,
                 task.AssigneeId,
                 "ok",
-                _ => new ReferInput
+                _ => new AssignToInput
                 {
                     Title = "حقوقی",
                     ToKind = AssigneeKind.Group,

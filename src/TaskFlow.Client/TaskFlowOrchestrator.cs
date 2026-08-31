@@ -7,17 +7,17 @@ namespace TaskFlow.Client;
 /// </summary>
 public sealed class TaskFlowOrchestrator(TaskFlowClient client)
 {
-    public async Task<AdvanceResult> CompleteAndAdvance(
+    public async Task<CompleteAndAssignToResult> CompleteAndAssignTo(
         string taskId,
         string actor,
         string note,
-        Func<CompleteResult, ReferInput?>? nextWhenAllCompleted = null,
+        Func<CompleteResult, AssignToInput?>? nextWhenAllCompleted = null,
         Dictionary<string, object?>? parameters = null,
         string? tenantId = null,
         CancellationToken cancellationToken = default)
     {
         var done = await client.CompleteTask(taskId, actor, note, parameters, tenantId, cancellationToken);
-        ReferResult? next = null;
+        AssignToResult? next = null;
         if (done.Completion.AllCompleted && nextWhenAllCompleted is not null)
         {
             var input = nextWhenAllCompleted(done);
@@ -33,10 +33,10 @@ public sealed class TaskFlowOrchestrator(TaskFlowClient client)
                 }
 
                 var referrer = done.Task.AssignedBy.Length > 0 ? done.Task.AssignedBy : actor;
-                next = await client.Refer(referrer, input, tenantId, cancellationToken);
+                next = await client.AssignTo(referrer, input, tenantId, cancellationToken);
             }
         }
 
-        return new AdvanceResult { Complete = done, Next = next };
+        return new CompleteAndAssignToResult { Complete = done, Next = next };
     }
 }

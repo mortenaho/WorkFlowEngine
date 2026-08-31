@@ -53,7 +53,7 @@ curl -s http://127.0.0.1:8081/v1/processes/employeeTermination/instances
 <div dir="ltr">
 
 ```bash
-curl -s -X POST http://127.0.0.1:8081/v1/referrals \
+curl -s -X POST http://127.0.0.1:8081/v1/assignments \
   -H 'Content-Type: application/json' -H 'X-Actor-Id: alice' \
   -d '{"definitionKey":"purchase","parentInstanceId":"INSTANCE","from":"alice","title":"Review","to":{"kind":"user","id":"mortenaho"}}'
 ```
@@ -120,7 +120,7 @@ curl -s 'http://127.0.0.1:8081/v1/users/alice/processes?state=open'
 
 </div>
 
-**۸. رفتن خودکار به مرحله بعد** — موتور مرحلهٔ بعد را خودش نمی‌داند؛ با `TaskFlowOrchestrator` (SDK) یا `ProcessOrchestrator` (in-process) بعد از `allCompleted` یک `Refer` بعدی می‌سازید. دیاگرام و توضیح: [docs/usage.md](docs/usage.md#ارجاع-موازی-و-رفتن-خودکار-به-مرحله-بعد).
+**۸. رفتن خودکار به مرحله بعد** — موتور مرحلهٔ بعد را خودش نمی‌داند؛ با `TaskFlowOrchestrator` (SDK) یا `ProcessOrchestrator` (in-process) بعد از `allCompleted` یک `AssignTo` بعدی می‌سازید. دیاگرام و توضیح: [docs/usage.md](docs/usage.md#تخصیص-موازی-و-رفتن-خودکار-به-مرحله-بعد).
 
 ## SDK برای میکروسرویس‌ها (C#)
 

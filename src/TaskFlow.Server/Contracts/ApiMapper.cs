@@ -53,7 +53,7 @@ public static class ApiMapper
         InstanceId = r.InstanceId,
     };
 
-    public static ReferResultDto ToDto(this ReferResult r) => new()
+    public static AssignToResultDto ToDto(this AssignToResult r) => new()
     {
         InstanceId = r.InstanceId,
         DefinitionKey = r.DefinitionKey,

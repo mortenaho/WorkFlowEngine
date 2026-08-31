@@ -3,15 +3,15 @@ using TaskFlow.Application;
 
 namespace TaskFlow.Server.Controllers;
 
-[Route("v1/referrals")]
-public sealed class ReferralsController(Engine engine) : ControllerBase
+[Route("v1/assignments")]
+public sealed class AssignmentsController(Engine engine) : ControllerBase
 {
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] CreateReferralRequest? body, CancellationToken cancellationToken)
+    public async Task<IActionResult> Create([FromBody] CreateAssignmentRequest? body, CancellationToken cancellationToken)
     {
         body ??= new();
         var from = body.From.Length > 0 ? body.From : Request.Actor();
-        var result = await engine.Refer(from, new ReferInput
+        var result = await engine.AssignTo(from, new AssignToInput
         {
             DefinitionKey = body.DefinitionKey,
             ParentInstanceId = body.ParentInstanceId,

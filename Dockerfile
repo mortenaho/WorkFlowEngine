@@ -9,12 +9,12 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
 RUN apt-get update \
     && apt-get install -y --no-install-recommends curl \
-    && rm -rf /var/lib/apt/lists/* \
-    && useradd --uid 10001 --create-home --shell /usr/sbin/nologin app
+    && rm -rf /var/lib/apt/lists/*
 COPY --from=build /out ./
 ENV ADDR=:8080
 ENV ASPNETCORE_URLS=http://0.0.0.0:8080
 EXPOSE 8080
+# aspnet:10.0 already ships a non-root `app` user
 USER app
 HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=5 \
     CMD curl -fsS http://127.0.0.1:8080/health >/dev/null || exit 1

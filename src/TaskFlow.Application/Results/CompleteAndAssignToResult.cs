@@ -1,7 +1,7 @@
 namespace TaskFlow.Application;
 
-public sealed class AdvanceResult
+public sealed class CompleteAndAssignToResult
 {
     public CompleteResult Complete { get; set; } = new();
-    public ReferResult? Next { get; set; }
+    public AssignToResult? Next { get; set; }
 }

@@ -1,6 +1,6 @@
 namespace TaskFlow.Application;
 
-public sealed class ReferInput
+public sealed class AssignToInput
 {
     public string DefinitionKey { get; set; } = "";
     public string ParentInstanceId { get; set; } = "";

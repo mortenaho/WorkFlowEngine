@@ -56,9 +56,9 @@ public sealed class TaskFlowClient
             tenantId,
             cancellationToken);
 
-    public Task<ReferResult> Refer(
+    public Task<AssignToResult> AssignTo(
         string from,
-        ReferInput input,
+        AssignToInput input,
         string? tenantId = null,
         CancellationToken cancellationToken = default)
     {
@@ -66,9 +66,9 @@ public sealed class TaskFlowClient
             ? new { kind = string.IsNullOrEmpty(input.ToKind) ? AssigneeKind.Users : input.ToKind, ids = input.ToIds }
             : new { kind = input.ToKind, id = input.ToId };
 
-        return Send<ReferResult>(
+        return Send<AssignToResult>(
             HttpMethod.Post,
-            "v1/referrals",
+            "v1/assignments",
             from,
             new
             {
