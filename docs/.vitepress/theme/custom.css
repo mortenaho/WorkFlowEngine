@@ -1,43 +1,187 @@
 :root {
   --vp-font-family-base: 'Vazirmatn', 'Segoe UI', Tahoma, sans-serif;
   --vp-font-family-mono: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+  --diagram-bg: var(--vp-c-bg-soft);
+  --diagram-border: var(--vp-c-divider);
 }
 
-html {
+/* ── Global RTL ─────────────────────────────────────────────── */
+html,
+body,
+#app {
   direction: rtl;
 }
 
 .VPNav,
 .VPNavBar,
 .VPSidebar,
-.VPDoc .aside,
-.VPDoc .content {
+.VPDoc,
+.VPDocFooter,
+.VPHome {
   direction: rtl;
 }
 
-.VPDoc .content-container {
+/* ── Doc content ────────────────────────────────────────────── */
+.VPDoc .content-container,
+.VPDoc .content-container [dir='rtl'],
+.VPDoc .vp-doc {
+  direction: rtl;
   text-align: right;
 }
 
-/* Code blocks stay LTR */
-div[class*='language-'],
-pre,
-code,
-.VPDoc div[dir='ltr'],
-.VPDoc .language-bash,
-.VPDoc .language-csharp,
-.VPDoc .language-json {
+.VPDoc .content-container h1,
+.VPDoc .content-container h2,
+.VPDoc .content-container h3,
+.VPDoc .content-container h4,
+.VPDoc .content-container p,
+.VPDoc .content-container li {
+  text-align: right;
+}
+
+/* Lists: indent from the right */
+.VPDoc .content-container ul,
+.VPDoc .content-container ol {
+  padding-inline-start: 0;
+  padding-inline-end: 1.4rem;
+  margin-inline-start: 0;
+}
+
+.VPDoc .content-container li {
+  margin-inline-start: 0;
+  padding-inline-start: 0;
+}
+
+/* Tables */
+.VPDoc .content-container table {
+  direction: rtl;
+  width: 100%;
+  margin: 1rem 0;
+}
+
+.VPDoc .content-container th,
+.VPDoc .content-container td {
+  text-align: right;
+}
+
+.VPDoc .content-container th:first-child,
+.VPDoc .content-container td:first-child {
+  padding-inline-start: 1rem;
+}
+
+/* Blockquote */
+.VPDoc .content-container blockquote {
+  border-inline-start: none;
+  border-inline-end: 4px solid var(--vp-c-brand-1);
+  padding-inline-start: 0;
+  padding-inline-end: 1rem;
+  margin-inline-start: 0;
+  margin-inline-end: 0;
+}
+
+/* Doc footer prev/next */
+.VPDocFooter .prev,
+.VPDocFooter .next {
+  direction: rtl;
+}
+
+.VPDocFooter .prev .title,
+.VPDocFooter .next .title {
+  text-align: right;
+}
+
+/* Outline (table of contents) */
+.VPDoc .aside-container {
+  direction: rtl;
+}
+
+.VPDoc .aside-container .outline-link {
+  text-align: right;
+}
+
+/* Sidebar */
+.VPSidebarItem .text {
+  text-align: right;
+}
+
+.VPSidebarItem.level-0 > .item > .text {
+  font-weight: 600;
+}
+
+/* Hero & features (home) */
+.VPHome .name,
+.VPHome .text,
+.VPHome .tagline,
+.VPFeature .title,
+.VPFeature .details {
+  direction: rtl;
+  text-align: right;
+}
+
+.VPHome .VPFeature {
+  direction: rtl;
+}
+
+.VPHome .actions {
+  justify-content: flex-start;
+}
+
+/* ── Code blocks stay LTR ───────────────────────────────────── */
+.VPDoc div[class*='language-'],
+.VPDoc div[dir='ltr']:not(:has(.mermaid)),
+.VPDoc pre,
+.VPDoc code:not(.mermaid *) {
   direction: ltr;
   text-align: left;
 }
 
-.VPHero .name,
-.VPHero .text,
-.VPHero .tagline {
+.VPDoc div[class*='language-'] {
+  margin: 1rem 0;
+  border-radius: 8px;
+}
+
+/* Plain-text diagrams (non-mermaid) */
+.VPDoc div[dir='ltr'] pre:not(.mermaid) {
+  direction: ltr;
+  text-align: left;
+}
+
+/* ── Mermaid diagrams ───────────────────────────────────────── */
+.VPDoc .mermaid,
+.VPDoc div.mermaid {
+  direction: ltr;
+  text-align: center;
+  margin: 1.5rem auto;
+  padding: 1.25rem;
+  max-width: 100%;
+  overflow-x: auto;
+  background: var(--diagram-bg);
+  border: 1px solid var(--diagram-border);
+  border-radius: 12px;
+}
+
+.VPDoc .mermaid svg {
+  max-width: 100%;
+  height: auto !important;
+  margin: 0 auto;
+  display: block;
+}
+
+/* Hide mermaid code-fence chrome when rendered */
+.VPDoc .language-mermaid.mermaid-rendered .copy,
+.VPDoc .language-mermaid.mermaid-rendered .lang {
+  display: none;
+}
+
+/* ── Nav bar tweaks ─────────────────────────────────────────── */
+.VPNavBarTitle .title {
   direction: rtl;
 }
 
-.VPFeature .title,
-.VPFeature .details {
-  text-align: right;
+.VPNavBarMenuLink {
+  direction: rtl;
+}
+
+/* Search modal RTL */
+.VPLocalSearchBox {
+  direction: rtl;
 }
