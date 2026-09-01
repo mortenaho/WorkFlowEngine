@@ -16,10 +16,11 @@ import { withBase } from 'vitepress'
 .tf-brand {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   text-decoration: none;
   color: inherit;
-  padding: 4px 0;
+  padding: 4px 8px 4px 0;
+  margin-inline-end: 12px;
   transition: opacity 0.2s;
 }
 

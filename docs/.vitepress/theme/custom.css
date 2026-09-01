@@ -64,8 +64,16 @@ body,
 }
 
 .VPNavBar .wrapper {
-  padding: 0 20px;
+  padding: 0 24px;
   max-width: 1440px;
+}
+
+.VPNavBar .container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+  width: 100%;
 }
 
 /* Hide default VP logo/title — we use BrandLogo component */
@@ -78,28 +86,54 @@ body,
   align-items: center;
   min-width: 0;
   flex-shrink: 0;
+  margin-inline-end: 8px;
 }
 
 /* Nav links */
-.VPNavBarMenu {
+.VPNavBar .content {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 20px;
+  flex: 1;
+  min-width: 0;
+}
+
+.VPNavBar .content-body {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.VPNavBarMenu,
+.VPNavBarMenu.menu,
+.VPNavBarMenu.nav {
+  display: flex !important;
+  align-items: center;
+  gap: 6px;
   direction: rtl;
 }
 
-.VPNavBarMenu .VPNavBarMenuLink {
+.VPNavBarMenu .VPNavBarMenuLink,
+.VPNavBarMenu .VPLink.link {
   direction: rtl;
   font-weight: 500;
   font-size: 0.9rem;
-  padding: 6px 14px;
+  padding: 8px 16px !important;
+  margin: 0 2px;
   border-radius: 8px;
+  white-space: nowrap;
   transition: background 0.15s, color 0.15s;
 }
 
-.VPNavBarMenu .VPNavBarMenuLink:hover {
+.VPNavBarMenu .VPNavBarMenuLink:hover,
+.VPNavBarMenu .VPLink.link:hover {
   background: var(--vp-c-brand-soft);
   color: var(--vp-c-brand-1);
 }
 
-.VPNavBarMenu .VPNavBarMenuLink.active {
+.VPNavBarMenu .VPNavBarMenuLink.active,
+.VPNavBarMenu .VPLink.link.active {
   color: var(--vp-c-brand-1);
   background: var(--vp-c-brand-soft);
   font-weight: 600;
@@ -108,6 +142,8 @@ body,
 /* Search button */
 .VPNavBarSearch {
   direction: rtl;
+  margin-inline-start: 4px;
+  flex-shrink: 0;
 }
 
 .VPNavBarSearch .DocSearch-Button,
@@ -115,9 +151,9 @@ body,
   border-radius: 10px !important;
   border: 1px solid var(--vp-c-divider) !important;
   background: var(--vp-c-bg-soft) !important;
-  min-width: 160px;
+  min-width: 168px;
   height: 38px !important;
-  padding: 0 14px !important;
+  padding: 0 16px !important;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
@@ -134,14 +170,18 @@ body,
   opacity: 0.7;
 }
 
-/* Content area: brand on right, menu center-left, search left */
-.VPNavBar .content {
-  gap: 16px;
-}
-
-.VPNavBar .content-body {
+/* Social + appearance cluster */
+.VPNavBarSocialLinks,
+.VPNavBarAppearance,
+.VPNavBarTranslations,
+.VPNavBarExtra {
   display: flex;
   align-items: center;
+  gap: 10px;
+  margin-inline-start: 4px;
+}
+
+.VPNavBarSocialLinks {
   gap: 8px;
 }
 
@@ -824,4 +864,29 @@ body,
   .tf-cta-inner {
     padding: 24px;
   }
+
+  .VPNavBar .container {
+    gap: 16px;
+  }
+
+  .VPNavBar .content {
+    gap: 12px;
+  }
+}
+
+/* Mobile nav drawer */
+.VPNavScreen {
+  direction: rtl;
+}
+
+.VPNavScreenMenuLink,
+.VPNavScreenMenuGroup .VPNavScreenMenuLink {
+  padding: 12px 20px !important;
+  margin: 4px 12px;
+  border-radius: 10px;
+}
+
+.VPNavScreenMenuGroup + .VPNavScreenMenuGroup,
+.VPNavScreenMenuLink + .VPNavScreenMenuLink {
+  margin-top: 4px;
 }
