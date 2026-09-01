@@ -491,6 +491,17 @@ public sealed class Engine
         return result;
     }
 
+    public async Task<TaskCompletionOutcome> CompleteTaskWithOutcome(
+        string taskId,
+        string actor,
+        string note,
+        Dictionary<string, object?>? parameters = null,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await CompleteTask(taskId, actor, note, parameters, cancellationToken);
+        return TaskCompletionOutcome.From(result);
+    }
+
     internal async Task<bool> TryMarkJoinAdvanced(string instanceId, CancellationToken cancellationToken = default)
     {
         var inst = await GetInstance(instanceId, cancellationToken);

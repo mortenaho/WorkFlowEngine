@@ -131,6 +131,18 @@ public sealed class TaskFlowClient
             tenantId,
             cancellationToken);
 
+    public async Task<TaskCompletionOutcome> CompleteTaskWithOutcome(
+        string taskId,
+        string actor,
+        string note = "",
+        Dictionary<string, object?>? parameters = null,
+        string? tenantId = null,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await CompleteTask(taskId, actor, note, parameters, tenantId, cancellationToken);
+        return TaskCompletionOutcome.From(result);
+    }
+
     public Task<CompleteAndEndResult> CompleteAndEnd(
         string taskId,
         string actor,

@@ -179,6 +179,56 @@ public class EngineTests
     }
 
     [Fact]
+    public async Task CompleteTaskWithOutcome_MapsParallelJoinStatuses()
+    {
+        var eng = Fixtures.NewEngine();
+        var started = await eng.Start("purchase", "sara");
+        var parallel = await eng.AssignTo("sara", new AssignToInput
+        {
+            DefinitionKey = started.DefinitionKey,
+            ParentInstanceId = started.InstanceId,
+            ToKind = AssigneeKind.Users,
+            ToIds = ["mortenaho", "tina"],
+            OnAllCompleted = new AssignToInput
+            {
+                Title = "legal",
+                ToKind = AssigneeKind.Group,
+                ToId = "legal",
+            },
+        });
+
+        var first = await eng.CompleteTaskWithOutcome(parallel.Tasks[0].Id, parallel.Tasks[0].AssigneeId, "");
+        Assert.Equal(TaskCompletionStatus.WaitingForOthers, first.Status);
+        Assert.Equal("waiting_for_others", first.StatusKey);
+        Assert.Null(first.Next);
+
+        var second = await eng.CompleteTaskWithOutcome(parallel.Tasks[1].Id, parallel.Tasks[1].AssigneeId, "");
+        Assert.Equal(TaskCompletionStatus.AllDone, second.Status);
+        Assert.Equal("all_done", second.StatusKey);
+        Assert.NotNull(second.Next);
+        Assert.Equal("legal", second.Next!.Task!.AssigneeId);
+    }
+
+    [Fact]
+    public async Task CompleteTaskWithOutcome_SingleTaskIsApproved()
+    {
+        var eng = Fixtures.NewEngine();
+        var started = await eng.Start("purchase", "sara");
+        var refer = await eng.AssignTo("sara", new AssignToInput
+        {
+            DefinitionKey = started.DefinitionKey,
+            ParentInstanceId = started.InstanceId,
+            ToKind = AssigneeKind.User,
+            ToId = "mortenaho",
+        });
+
+        var outcome = await eng.CompleteTaskWithOutcome(refer.Task!.Id, "mortenaho", "ok");
+        Assert.Equal(TaskCompletionStatus.Approved, outcome.Status);
+        Assert.Equal("approved", outcome.StatusKey);
+        Assert.Null(outcome.Next);
+    }
+
+    [Fact]
     public async Task OnAllCompletedRequiresParallelUsers()
     {
         var eng = Fixtures.NewEngine();

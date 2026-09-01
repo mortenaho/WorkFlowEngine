@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.TestHost;
+using TaskFlow.Application;
 using TaskFlow.Client;
 using TaskFlow.Domain;
 using TaskFlow.Server;
@@ -51,19 +52,16 @@ public class ClientSdkTests : IAsyncLifetime
         var inbox = await _client.PendingTasks("mortenaho");
         Assert.Single(inbox);
 
-        AssignToResult? next = null;
-        foreach (var task in refer.Tasks)
-        {
-            var done = await _client.CompleteTask(task.Id, task.AssigneeId, "ok");
-            if (done.Next is not null)
-                next = done.Next;
-        }
+        var first = await _client.CompleteTaskWithOutcome(refer.Tasks[0].Id, refer.Tasks[0].AssigneeId, "ok");
+        Assert.Equal(TaskCompletionStatus.WaitingForOthers, first.Status);
+        Assert.Equal("waiting_for_others", first.StatusKey);
 
-        Assert.NotNull(next);
-        Assert.NotNull(next.Task);
-        Assert.Equal(AssigneeKind.Group, next.Task.AssigneeKind);
+        var second = await _client.CompleteTaskWithOutcome(refer.Tasks[1].Id, refer.Tasks[1].AssigneeId, "ok");
+        Assert.Equal(TaskCompletionStatus.AllDone, second.Status);
+        Assert.NotNull(second.Next);
+        Assert.Equal(AssigneeKind.Group, second.Next!.Task!.AssigneeKind);
 
-        var claimed = await _client.ClaimTask(next.Task!.Id, "mortenaho");
+        var claimed = await _client.ClaimTask(second.Next.Task!.Id, "mortenaho");
         Assert.Equal("mortenaho", claimed.ClaimedBy);
 
         var ended = await _client.CompleteAndEnd(claimed.Id, "mortenaho", "done");

@@ -396,13 +396,35 @@ public sealed class TaskApprovalController : ControllerBase
 
 </div>
 
-| complete توسط | چه اتفاقی در موتور می‌افتد |
-|---------------|---------------------------|
-| نفر ۱ از ۵ | تسک او بسته می‌شود؛ join هنوز کامل نشده |
-| نفر ۲ تا ۴ | همان |
-| نفر ۵ (آخر) | join کامل می‌شود؛ `ParallelJoinHandler` خودکار `AssignTo` بعدی (مثلاً legal) را می‌سازد |
+اگر UI همان لحظه باید بداند join تمام شده یا نه، از `CompleteTaskWithOutcome` استفاده کنید — نیازی به بررسی دستی `result.Next` نیست:
 
-> اگر UI همان لحظه باید بداند join تمام شده، می‌توانید `result.Next` را بررسی کنید — **اختیاری** است و برای BFF الزامی نیست. معمولاً کارتابل (`PendingTasks`) یا نوتیفیکیشن کافی است.
+<div dir="ltr">
+
+```csharp
+[HttpPost("tasks/{taskId}/approve")]
+public async Task<IActionResult> Approve(string taskId, [FromBody] ApproveRequest body)
+{
+    var userId = User.FindFirst("sub")?.Value ?? "";
+
+    var outcome = await _tf.CompleteTaskWithOutcome(taskId, userId, body.Note ?? "تأیید شد");
+
+    return outcome.Status switch
+    {
+        TaskCompletionStatus.AllDone => Ok(new { status = outcome.StatusKey, next = outcome.Next }),
+        TaskCompletionStatus.WaitingForOthers => Ok(new { status = outcome.StatusKey }),
+        _ => Ok(new { status = outcome.StatusKey }),
+    };
+}
+```
+
+</div>
+
+| complete توسط | `outcome.StatusKey` | توضیح |
+|---------------|---------------------|--------|
+| نفر ۱ از ۵ | `waiting_for_others` | تسک او بسته شد؛ join هنوز کامل نشده |
+| نفر ۲ تا ۴ | `waiting_for_others` | همان |
+| نفر ۵ (آخر) | `all_done` | join کامل شد؛ `outcome.Next` ارجاع جدید است |
+| تسک تکی (غیر موازی) | `approved` | تسک بسته شد؛ join موازی نبود |
 
 ثبت `TaskFlowClient` در `Program.cs` میکروسرویس:
 
@@ -429,8 +451,9 @@ builder.Services.AddTaskFlowClient(o =>
 | `join: all` | حالت join (پیش‌فرض وقتی `onAllCompleted` داده شود) |
 | `Group` + `ToId` | یک تسک مشترک؛ یکی Claim می‌کند |
 | `CompleteTask` | تسک را می‌بندد؛ موتور join و مرحله بعد را خودکار مدیریت می‌کند |
+| `CompleteTaskWithOutcome` | همان `CompleteTask` + وضعیت UI: `approved` / `waiting_for_others` / `all_done` |
 | `CompleteAndAssignTo` | Legacy — callback دستی برای مرحله بعد |
-| `done.Next` | (اختیاری) ارجاع تازه بعد از join — فقط برای UX فوری یا دیباگ؛ BFF لازم نیست بررسی کند |
+| `done.Next` | (اختیاری) ارجاع تازه بعد از join — داخل `CompleteTaskWithOutcome` به‌صورت `all_done` برمی‌گردد |
 
 ### کارتابل، تکمیل، و فرایندهای کاربر
 
