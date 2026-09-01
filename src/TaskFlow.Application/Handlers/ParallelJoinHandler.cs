@@ -1,9 +1,5 @@
 namespace TaskFlow.Application;
 
-/// <summary>
-/// When a parallel assignment (<c>users</c> + <c>onAllCompleted</c>) is fully done,
-/// automatically creates the next assignment stored on the instance.
-/// </summary>
 public sealed class ParallelJoinHandler(Engine engine) : ITaskCompletedHandler
 {
     public async Task<AssignToResult?> HandleAsync(TaskCompletedEvent e, CancellationToken cancellationToken = default)

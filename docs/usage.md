@@ -191,112 +191,29 @@ var refer = await tf.AssignTo("sara", new AssignToInput
 
 </div>
 
-### تخصیص موازی و رفتن خودکار به مرحله بعد
+### تخصیص موازی
 
-برای ارجاع موازی، مرحلهٔ بعد را **همان‌جا که AssignTo می‌زنید** با `onAllCompleted` تعریف کنید. هر کاربر فقط `CompleteTask` می‌زند؛ موتور بعد از هر تکمیل یک event داخلی (`TaskCompleted`) می‌فرستد و `ParallelJoinHandler` وقتی `allCompleted` شد خودکار `AssignTo` بعدی را می‌سازد.
-
-**به زبان ساده:**
-
-1. با `AssignTo` و `Users` کار را هم‌زمان به چند نفر بفرست و `onAllCompleted` را پر کن.  
-2. هر نفر فقط `CompleteTask` می‌زند — BFF نیازی به دانستن موازی بودن تسک ندارد.  
-3. موتور بعد از هر تکمیل event داخلی (`TaskCompleted`) می‌فرستد و بررسی می‌کند همه تمام شده‌اند یا نه.  
-4. وقتی آخرین نفر تمام کرد، `ParallelJoinHandler` خودکار `AssignTo` بعدی را می‌سازد.
-
-#### تصویر کلی جریان
+مرحله بعد را با `onAllCompleted` روی همان `AssignTo` تعریف کنید. هر کاربر فقط `CompleteTask` می‌زند؛ بعد از آخرین تکمیل، `ParallelJoinHandler` روی `TaskCompleted` ارجاع بعدی را می‌سازد.
 
 <div dir="ltr">
 
 ```mermaid
 flowchart TD
-    start(["Start purchase<br/>sara"]) --> parallel["AssignTo Users<br/>mortenaho + tina"]
-    parallel --> m["Task: mortenaho"]
-    parallel --> c["Task: tina"]
-    m --> join{"AllCompleted?"}
+    start([Start]) --> parallel[AssignTo users]
+    parallel --> m[mortenaho]
+    parallel --> c[tina]
+    m --> join{all done?}
     c --> join
-    join -->|"خیر — هنوز باز است"| wait["صبر تا نفر بعدی<br/>موتور join نمی‌زند"]
-    join -->|"بله — همه تمام شدند"| next["AssignTo خودکار<br/>→ legal"]
-    next --> claim["Claim توسط mortenaho"]
-    claim --> finish(["Complete"])
-
-    style start fill:#DCCCFF,stroke:#874FFF,color:#1a1a2e
-    style parallel fill:#C2E5FF,stroke:#3DADFF,color:#1a1a2e
-    style join fill:#FFECBD,stroke:#FFC943,color:#1a1a2e
-    style next fill:#CDF4D3,stroke:#66D575,color:#1a1a2e
-    style wait fill:#f5f5f5,stroke:#bdbdbd,color:#616161
-    style finish fill:#DCCCFF,stroke:#874FFF,color:#1a1a2e
+    join -->|no| wait[open tasks remain]
+    join -->|yes| next[AssignTo onAllCompleted]
 ```
 
 </div>
 
-#### چه چیزی کجا ساخته می‌شود؟
+- هر `AssignTo` یک instance فرزند می‌سازد؛ `AllCompleted` فقط برای همان فرزند است.
+- `DefinitionKey` و `ParentInstanceId` در `onAllCompleted` را می‌توان خالی گذاشت.
 
-<div dir="ltr">
-
-```mermaid
-flowchart RL
-    root["Root instance<br/>sara"]
-    child1["Child: موازی"]
-    child2["Child: حقوقی"]
-    t1["Task mortenaho"]
-    t2["Task tina"]
-    t3["Task group legal"]
-
-    root -->|"AssignTo Users"| child1
-    child1 --> t1
-    child1 --> t2
-    root -.->|"AllCompleted → AssignTo"| child2
-    child2 --> t3
-
-    style root fill:#DCCCFF,stroke:#874FFF,color:#1a1a2e
-    style child1 fill:#C2E5FF,stroke:#3DADFF,color:#1a1a2e
-    style child2 fill:#CDF4D3,stroke:#66D575,color:#1a1a2e
-    style t1 fill:#e3f2fd,stroke:#1976d2,color:#1a1a2e
-    style t2 fill:#e3f2fd,stroke:#1976d2,color:#1a1a2e
-    style t3 fill:#e8f5e9,stroke:#388e3c,color:#1a1a2e
-```
-
-</div>
-
-- ریشه (`Start`) پرونده را نگه می‌دارد.  
-- هر `AssignTo` یک فرزند جدید می‌سازد؛ تسک‌ها زیر همان فرزند می‌نشینند.  
-- `AllCompleted` فقط برای **همان فرزند** حساب می‌شود، نه کل پرونده.  
-- ارجاع بعدی دوباره به همان ریشه وصل می‌شود (`ParentInstanceId`).
-
-#### ترتیب زمانی (میکروسرویس ↔ سرور مشترک)
-
-<div dir="ltr">
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant MS as Microservice<br/>+ TaskFlow.Client
-    participant Srv as TaskFlow.Server
-    participant M as mortenaho
-    participant C as tina
-    participant L as legal
-
-    MS->>Srv: Start purchase
-    MS->>Srv: AssignTo Users<br/>mortenaho + tina
-    Srv-->>M: Task open
-    Srv-->>C: Task open
-    M->>MS: CompleteTask
-    MS->>Srv: CompleteTask
-    Note over Srv: TaskCompleted event<br/>AllCompleted = false
-    Note over MS: next = null
-    C->>MS: CompleteTask
-    MS->>Srv: CompleteTask
-    Note over Srv: ParallelJoinHandler<br/>AssignTo legal
-    Srv-->>MS: next = legal
-    Srv-->>L: Task open
-    M->>MS: Claim + Complete
-    MS->>Srv: claim / complete
-```
-
-</div>
-
-#### نمونه کد
-
-`DefinitionKey` و `ParentInstanceId` در `onAllCompleted` را می‌توانید خالی بگذارید؛ موتور از تسکِ تکمیل‌شده پر می‌کند. ارجاع بعدی به‌نام `from` همان مرحله (مثلاً `sara`) زده می‌شود.
+#### نمونه
 
 <div dir="ltr">
 
@@ -319,7 +236,6 @@ var parallel = await tf.AssignTo("sara", new AssignToInput
 foreach (var task in parallel.Tasks)
     await tf.CompleteTask(task.Id, task.AssigneeId, "تأیید شد");
 
-// بعد از join، تسک حقوقی در کارتابل گروه legal ظاهر می‌شود — بدون بررسی next
 var legalInbox = await tf.PendingTasks(group: "legal");
 ```
 
@@ -344,59 +260,9 @@ curl -s -X POST http://127.0.0.1:8081/v1/assignments \
 
 </div>
 
-#### نمونه BFF: یک endpoint برای همهٔ تسک‌ها
+#### BFF
 
-در پروداکشن کاربر مستقیم TaskFlow را صدا نمی‌زند. UI دکمه «تأیید» را می‌زند؛ **BFF شما** فقط `CompleteTask` می‌زند. نیازی نیست بدانید تسک موازی است یا نه — قانون مرحلهٔ بعد از قبل در `onAllCompleted` ذخیره شده و `ParallelJoinHandler` داخل موتور join و رفتن به مرحله بعد را مدیریت می‌کند.
-
-اگر پنج نفر موازی دارید، **پنج endpoint جدا لازم نیست** — همه از یک مسیر با `taskId` متفاوت استفاده می‌کنند:
-
-<div dir="ltr">
-
-```http
-POST /api/tasks/task-1/approve   ← mortenaho
-POST /api/tasks/task-2/approve   ← tina
-POST /api/tasks/task-3/approve   ← hamid
-...
-```
-
-</div>
-
-همان handler برای همه — BFF فقط تسک همان کاربر را می‌بندد؛ موتور بقیه را مدیریت می‌کند.
-
-<div dir="ltr">
-
-```csharp
-using TaskFlow.Client;
-using Microsoft.AspNetCore.Mvc;
-
-[ApiController]
-[Route("api")]
-public sealed class TaskApprovalController : ControllerBase
-{
-    private readonly TaskFlowClient _tf;
-
-    public TaskApprovalController(TaskFlowClient tf) => _tf = tf;
-
-    public sealed class ApproveRequest
-    {
-        public string? Note { get; set; }
-    }
-
-    [HttpPost("tasks/{taskId}/approve")]
-    public async Task<IActionResult> Approve(string taskId, [FromBody] ApproveRequest body)
-    {
-        var userId = User.FindFirst("sub")?.Value ?? ""; // از SSO
-
-        await _tf.CompleteTask(taskId, userId, body.Note ?? "تأیید شد");
-
-        return Ok(new { status = "approved" });
-    }
-}
-```
-
-</div>
-
-اگر UI همان لحظه باید بداند join تمام شده یا نه، از `CompleteTaskWithOutcome` استفاده کنید — نیازی به بررسی دستی `result.Next` نیست:
+یک endpoint برای approve کافی است؛ `taskId` تفاوت می‌کند، handler یکی است. BFF فقط `CompleteTask` می‌زند — join با انجین است.
 
 <div dir="ltr">
 
@@ -405,28 +271,16 @@ public sealed class TaskApprovalController : ControllerBase
 public async Task<IActionResult> Approve(string taskId, [FromBody] ApproveRequest body)
 {
     var userId = User.FindFirst("sub")?.Value ?? "";
-
-    var outcome = await _tf.CompleteTaskWithOutcome(taskId, userId, body.Note ?? "تأیید شد");
-
-    return outcome.Status switch
-    {
-        TaskCompletionStatus.AllDone => Ok(new { status = outcome.StatusKey, next = outcome.Next }),
-        TaskCompletionStatus.WaitingForOthers => Ok(new { status = outcome.StatusKey }),
-        _ => Ok(new { status = outcome.StatusKey }),
-    };
+    await _tf.CompleteTask(taskId, userId, body.Note ?? "تأیید شد");
+    return Ok();
 }
 ```
 
+برای برگرداندن `approved` / `waiting_for_others` / `all_done` در همان پاسخ: `CompleteTaskWithOutcome` و فیلد `StatusKey`.
+
 </div>
 
-| complete توسط | `outcome.StatusKey` | توضیح |
-|---------------|---------------------|--------|
-| نفر ۱ از ۵ | `waiting_for_others` | تسک او بسته شد؛ join هنوز کامل نشده |
-| نفر ۲ تا ۴ | `waiting_for_others` | همان |
-| نفر ۵ (آخر) | `all_done` | join کامل شد؛ `outcome.Next` ارجاع جدید است |
-| تسک تکی (غیر موازی) | `approved` | تسک بسته شد؛ join موازی نبود |
-
-ثبت `TaskFlowClient` در `Program.cs` میکروسرویس:
+ثبت کلاینت:
 
 <div dir="ltr">
 
@@ -440,20 +294,17 @@ builder.Services.AddTaskFlowClient(o =>
 
 </div>
 
-> **Legacy:** `ProcessOrchestrator` / `TaskFlowOrchestrator.CompleteAndAssignTo` هنوز برای callback دستی موجود است؛ برای join موازی جدید `onAllCompleted` را ترجیح دهید.
+> `ProcessOrchestrator` / `CompleteAndAssignTo` برای callback دستی قدیمی است.
 
-نمونهٔ دامنهٔ in-process (بدون HTTP): [`examples/Scenario`](https://github.com/mortenaho/WorkFlowEngine/blob/main/examples/Scenario/Program.cs). تست یکپارچهٔ SDK: `ClientSdkTests`.
+نمونه in-process: [`examples/Scenario`](https://github.com/mortenaho/WorkFlowEngine/blob/main/examples/Scenario/Program.cs).
 
-| مفهوم | معنی کوتاه |
-|--------|------------|
-| `Users` + `ToIds` | چند تسک موازی؛ **همه** باید تمام شوند |
-| `onAllCompleted` | مرحلهٔ بعد؛ موتور بعد از join خودکار `AssignTo` می‌زند |
-| `join: all` | حالت join (پیش‌فرض وقتی `onAllCompleted` داده شود) |
-| `Group` + `ToId` | یک تسک مشترک؛ یکی Claim می‌کند |
-| `CompleteTask` | تسک را می‌بندد؛ موتور join و مرحله بعد را خودکار مدیریت می‌کند |
-| `CompleteTaskWithOutcome` | همان `CompleteTask` + وضعیت UI: `approved` / `waiting_for_others` / `all_done` |
-| `CompleteAndAssignTo` | Legacy — callback دستی برای مرحله بعد |
-| `done.Next` | (اختیاری) ارجاع تازه بعد از join — داخل `CompleteTaskWithOutcome` به‌صورت `all_done` برمی‌گردد |
+| مفهوم | معنی |
+|--------|------|
+| `Users` + `ToIds` | چند تسک موازی؛ همه باید done شوند |
+| `onAllCompleted` | مرحله بعد بعد از join |
+| `CompleteTask` | بستن تسک؛ join در انجین |
+| `CompleteTaskWithOutcome` | همان + `StatusKey` برای پاسخ HTTP |
+| `CompleteAndAssignTo` | قدیمی |
 
 ### کارتابل، تکمیل، و فرایندهای کاربر
 

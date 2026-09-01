@@ -179,7 +179,7 @@ public class EngineTests
     }
 
     [Fact]
-    public async Task CompleteTaskWithOutcome_MapsParallelJoinStatuses()
+    public async Task ParallelJoin_OutcomeAfterLastComplete()
     {
         var eng = Fixtures.NewEngine();
         var started = await eng.Start("purchase", "sara");
@@ -210,7 +210,7 @@ public class EngineTests
     }
 
     [Fact]
-    public async Task CompleteTaskWithOutcome_SingleTaskIsApproved()
+    public async Task CompleteTaskWithOutcome_SingleAssignee()
     {
         var eng = Fixtures.NewEngine();
         var started = await eng.Start("purchase", "sara");

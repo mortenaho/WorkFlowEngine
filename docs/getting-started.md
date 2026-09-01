@@ -118,7 +118,7 @@ var started = await tf.Start("purchase", "alice");
 
 | موضوع | لینک |
 |--------|------|
-| ارجاع موازی و `onAllCompleted` | [usage → تخصیص موازی](./usage#تخصیص-موازی-و-رفتن-خودکار-به-مرحله-بعد) |
+| ارجاع موازی و `onAllCompleted` | [usage → تخصیص موازی](./usage#تخصیص-موازی) |
 | معماری BFF و API Key | [architecture](./architecture#۶-معماری-پیشنهادی-استقرار-react-بک‌اند-و-کلید-api) |
 | Postgres و مهاجرت | [database](./database#۲-نحوهٔ-اتصال-و-مهاجرت-خودکار) |
 | Docker Compose | [usage → پیکربندی](./usage#۴-پیکربندی-محیط-و-docker) |

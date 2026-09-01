@@ -168,7 +168,7 @@ flowchart TD
 
 `ProcessOrchestrator` / `TaskFlowOrchestrator.CompleteAndAssignTo` برای callback دستی (legacy) باقی مانده است.
 
-شرح روان‌تر با دیاگرام سناریو و نمونه کد: [usage.md — ارجاع موازی و رفتن خودکار](usage.md#تخصیص-موازی-و-رفتن-خودکار-به-مرحله-بعد).
+نمونه کد: [usage.md — تخصیص موازی](usage.md#تخصیص-موازی).
 
 ---
 
@@ -246,7 +246,7 @@ erDiagram
 
 - تکمیل تسک شخصی صرفاً توسط همان فرد امکان‌پذیر است.
 - تکمیل تسک گروهی تنها توسط عضوی که تسک را تحویل گرفته (Claim کرده) مجاز است.
-- برای join موازی با `onAllCompleted`، `ParallelJoinHandler` بعد از `allCompleted` خودکار `AssignTo` بعدی را می‌سازد (جزئیات در [usage.md](usage.md#تخصیص-موازی-و-رفتن-خودکار-به-مرحله-بعد)).
+- برای join موازی با `onAllCompleted`، `ParallelJoinHandler` بعد از `allCompleted` خودکار `AssignTo` بعدی را می‌سازد ([usage.md](usage.md#تخصیص-موازی)).
 
 ### ۵. تکمیل و بستن کل فرایند (Complete and End)
 

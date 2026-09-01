@@ -120,7 +120,7 @@ curl -s 'http://127.0.0.1:8081/v1/users/sara/processes?state=open'
 
 </div>
 
-**۸. رفتن خودکار به مرحله بعد** — در ارجاع موازی `onAllCompleted` را در `AssignTo` بگذارید؛ هر کاربر فقط `CompleteTask` می‌زند و موتور بعد از join خودکار مرحله بعد را می‌سازد. جزئیات: [docs/usage.md](docs/usage.md#تخصیص-موازی-و-رفتن-خودکار-به-مرحله-بعد).
+**۸. رفتن خودکار به مرحله بعد** — در ارجاع موازی `onAllCompleted` را در `AssignTo` بگذارید؛ هر کاربر فقط `CompleteTask` می‌زند و موتور بعد از join خودکار مرحله بعد را می‌سازد. جزئیات: [docs/usage.md](docs/usage.md#تخصیص-موازی).
 
 ## SDK برای میکروسرویس‌ها (C#)
 
