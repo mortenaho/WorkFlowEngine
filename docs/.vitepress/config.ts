@@ -21,8 +21,8 @@ export default defineConfig({
     ['meta', { name: 'theme-color', content: '#4F46E5' }],
   ],
   themeConfig: {
-    logo: '/favicon.svg',
-    siteTitle: 'TaskFlow Docs',
+    logo: '/logo-mark.svg',
+    siteTitle: false,
     nav: [
       { text: 'شروع سریع', link: '/getting-started' },
       { text: 'راهنما', link: '/usage' },

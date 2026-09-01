@@ -6,7 +6,7 @@ hero:
   text: موتور گردش کار
   tagline: ارجاع، کارتابل و join موازی — بدون BPMN، با API سبک و SDK برای میکروسرویس‌ها
   image:
-    src: /favicon.svg
+    src: /logo-mark.svg
     alt: TaskFlow
   actions:
     - theme: brand

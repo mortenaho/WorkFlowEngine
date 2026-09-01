@@ -53,22 +53,121 @@ body,
 
 /* ── Nav bar ────────────────────────────────────────────────── */
 .VPNav {
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--vp-c-divider);
+  backdrop-filter: blur(16px) saturate(1.4);
+  background: color-mix(in srgb, var(--vp-nav-bg-color) 88%, transparent) !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--vp-c-divider) 70%, transparent);
 }
 
-.VPNavBarTitle .title {
+.VPNavBar {
+  height: 64px !important;
+  padding-block: 0 !important;
+}
+
+.VPNavBar .wrapper {
+  padding: 0 20px;
+  max-width: 1440px;
+}
+
+/* Hide default VP logo/title — we use BrandLogo component */
+.VPNavBarTitle {
+  display: none !important;
+}
+
+.VPNavBar .title {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  flex-shrink: 0;
+}
+
+/* Nav links */
+.VPNavBarMenu {
   direction: rtl;
-  font-weight: 700;
 }
 
-.VPNavBarMenuLink {
+.VPNavBarMenu .VPNavBarMenuLink {
   direction: rtl;
   font-weight: 500;
+  font-size: 0.9rem;
+  padding: 6px 14px;
+  border-radius: 8px;
+  transition: background 0.15s, color 0.15s;
 }
 
-.VPNavBarMenuLink.active {
+.VPNavBarMenu .VPNavBarMenuLink:hover {
+  background: var(--vp-c-brand-soft);
   color: var(--vp-c-brand-1);
+}
+
+.VPNavBarMenu .VPNavBarMenuLink.active {
+  color: var(--vp-c-brand-1);
+  background: var(--vp-c-brand-soft);
+  font-weight: 600;
+}
+
+/* Search button */
+.VPNavBarSearch {
+  direction: rtl;
+}
+
+.VPNavBarSearch .DocSearch-Button,
+.VPNavBarSearch button {
+  border-radius: 10px !important;
+  border: 1px solid var(--vp-c-divider) !important;
+  background: var(--vp-c-bg-soft) !important;
+  min-width: 160px;
+  height: 38px !important;
+  padding: 0 14px !important;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.VPNavBarSearch .DocSearch-Button:hover,
+.VPNavBarSearch button:hover {
+  border-color: var(--vp-c-brand-2) !important;
+  box-shadow: 0 0 0 3px var(--vp-c-brand-soft);
+}
+
+.VPNavBarSearch .DocSearch-Button-Keys,
+.VPNavBarSearch kbd {
+  font-size: 0.7rem !important;
+  border-radius: 5px !important;
+  opacity: 0.7;
+}
+
+/* Content area: brand on right, menu center-left, search left */
+.VPNavBar .content {
+  gap: 16px;
+}
+
+.VPNavBar .content-body {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Sidebar toggle */
+.VPNavBarHamburger {
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+
+.VPNavBarHamburger:hover {
+  background: var(--vp-c-brand-soft);
+}
+
+/* Appearance toggle */
+.VPSwitchAppearance {
+  border-radius: 8px;
+}
+
+/* Social links */
+.VPNavBarSocialLink a {
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+
+.VPNavBarSocialLink a:hover {
+  background: var(--vp-c-brand-soft);
 }
 
 /* ── Home hero ──────────────────────────────────────────────── */
