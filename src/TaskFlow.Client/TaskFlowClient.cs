@@ -61,27 +61,13 @@ public sealed class TaskFlowClient
         AssignToInput input,
         string? tenantId = null,
         CancellationToken cancellationToken = default)
-    {
-        object to = input.ToKind == AssigneeKind.Users || input.ToIds is { Count: > 0 }
-            ? new { kind = string.IsNullOrEmpty(input.ToKind) ? AssigneeKind.Users : input.ToKind, ids = input.ToIds }
-            : new { kind = input.ToKind, id = input.ToId };
-
-        return Send<AssignToResult>(
+        => Send<AssignToResult>(
             HttpMethod.Post,
             "v1/assignments",
             from,
-            new
-            {
-                definitionKey = input.DefinitionKey,
-                parentInstanceId = input.ParentInstanceId,
-                from,
-                title = input.Title,
-                parameters = input.Parameters,
-                to,
-            },
+            BuildAssignmentBody(from, input),
             tenantId,
             cancellationToken);
-    }
 
     public Task<IReadOnlyList<WorkflowTask>> PendingTasks(
         string user = "",
@@ -323,4 +309,28 @@ public sealed class TaskFlowClient
 
         return null;
     }
+
+    private static object BuildAssignmentBody(string from, AssignToInput input) => new
+    {
+        definitionKey = input.DefinitionKey,
+        parentInstanceId = input.ParentInstanceId,
+        from,
+        title = input.Title,
+        parameters = input.Parameters,
+        join = string.IsNullOrEmpty(input.Join) ? null : input.Join,
+        onAllCompleted = input.OnAllCompleted is null ? null : BuildContinuationBody(input.OnAllCompleted),
+        to = BuildAssigneeBody(input),
+    };
+
+    private static object BuildContinuationBody(AssignToInput input) => new
+    {
+        title = input.Title,
+        parameters = input.Parameters,
+        to = BuildAssigneeBody(input),
+    };
+
+    private static object BuildAssigneeBody(AssignToInput input) =>
+        input.ToKind == AssigneeKind.Users || input.ToIds is { Count: > 0 }
+            ? new { kind = string.IsNullOrEmpty(input.ToKind) ? AssigneeKind.Users : input.ToKind, ids = input.ToIds }
+            : new { kind = input.ToKind, id = input.ToId };
 }

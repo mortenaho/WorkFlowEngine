@@ -95,7 +95,7 @@ paths:
               $ref: "#/components/schemas/StartProcess"
             example:
               processKey: purchase
-              initiator: alice
+              initiator: sara
               parameters:
                 amount: 150000000
       responses:
@@ -168,7 +168,7 @@ paths:
                 value:
                   definitionKey: purchase
                   parentInstanceId: "a1b2c3"
-                  from: alice
+                  from: sara
                   title: بررسی حقوقی
                   to:
                     kind: user
@@ -178,7 +178,7 @@ paths:
                 value:
                   definitionKey: purchase
                   parentInstanceId: "a1b2c3"
-                  from: alice
+                  from: sara
                   title: بررسی مالی
                   to:
                     kind: group
@@ -188,11 +188,27 @@ paths:
                 value:
                   definitionKey: purchase
                   parentInstanceId: "a1b2c3"
-                  from: alice
+                  from: sara
                   title: تأیید موازی
                   to:
                     kind: users
-                    ids: [mortenaho, cara, dan]
+                    ids: [mortenaho, tina, hamid]
+              parallelJoin:
+                summary: موازی با رفتن خودکار به مرحله بعد
+                value:
+                  definitionKey: purchase
+                  parentInstanceId: "a1b2c3"
+                  from: sara
+                  title: تأیید موازی
+                  join: all
+                  to:
+                    kind: users
+                    ids: [mortenaho, tina]
+                  onAllCompleted:
+                    title: بررسی حقوقی
+                    to:
+                      kind: group
+                      id: legal
       responses:
         "201":
           description: اینستنس ارجاع و تسک
@@ -379,7 +395,7 @@ paths:
           required: true
           schema:
             type: string
-            example: alice
+            example: sara
         - name: state
           in: query
           schema:
@@ -518,7 +534,7 @@ components:
           example: purchase
         initiator:
           type: string
-          example: alice
+          example: sara
         parameters:
           type: object
           additionalProperties: true
@@ -543,12 +559,27 @@ components:
         from:
           type: string
           description: ارجاع‌دهنده. اگر خالی باشد از X-Actor-Id
-          example: alice
+          example: sara
         title:
           type: string
         parameters:
           type: object
           additionalProperties: true
+        join:
+          type: string
+          enum: [all]
+          description: فقط برای ارجاع موازی (users). پیش‌فرض all وقتی onAllCompleted داده شود.
+        onAllCompleted:
+          type: object
+          description: ارجاع بعدی که پس از تکمیل همهٔ تسک‌های موازی خودکار ساخته می‌شود.
+          properties:
+            title:
+              type: string
+            parameters:
+              type: object
+              additionalProperties: true
+            to:
+              $ref: "#/components/schemas/Assignee"
         to:
           $ref: "#/components/schemas/Assignee"
     Assignee:
@@ -640,6 +671,9 @@ components:
           $ref: "#/components/schemas/Task"
         completion:
           $ref: "#/components/schemas/Completion"
+        next:
+          $ref: "#/components/schemas/AssignToResult"
+          description: وقتی join موازی تمام شده و مرحلهٔ بعد خودکار ساخته شده باشد.
     CompleteAndEndResult:
       type: object
       properties:

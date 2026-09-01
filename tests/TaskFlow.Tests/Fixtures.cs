@@ -5,11 +5,11 @@ internal static class Fixtures
     public static Engine NewEngine()
     {
         var dir = new StaticDirectory(
-            ["alice", "mortenaho", "cara", "dan"],
+            ["sara", "mortenaho", "tina", "hamid"],
             new Dictionary<string, IReadOnlyList<string>>
             {
-                ["legal"] = ["mortenaho", "cara"],
-                ["finance"] = ["dan", "cara"],
+                ["legal"] = ["mortenaho", "tina"],
+                ["finance"] = ["hamid", "tina"],
             });
         return new Engine(new MemoryStore(), dir);
     }

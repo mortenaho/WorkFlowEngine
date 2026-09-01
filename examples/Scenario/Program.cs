@@ -3,45 +3,41 @@ using TaskFlow.Domain;
 using TaskFlow.Infrastructure;
 
 var dir = new StaticDirectory(
-    ["alice", "mortenaho", "cara", "dan"],
+    ["sara", "mortenaho", "tina", "hamid"],
     new Dictionary<string, IReadOnlyList<string>>
     {
-        ["legal"] = ["mortenaho", "cara"],
-        ["finance"] = ["dan", "cara"],
+        ["legal"] = ["mortenaho", "tina"],
+        ["finance"] = ["hamid", "tina"],
     });
 var eng = new Engine(new MemoryStore(), dir);
-var orch = new ProcessOrchestrator(eng);
 
-var started = await eng.Start("purchase", "alice", new Dictionary<string, object?> { ["amount"] = 1.5e8 });
+var started = await eng.Start("purchase", "sara", new Dictionary<string, object?> { ["amount"] = 1.5e8 });
 Console.WriteLine($"start {started.DefinitionKey} {started.InstanceId}");
 
-var parallel = await eng.AssignTo("alice", new AssignToInput
+var parallel = await eng.AssignTo("sara", new AssignToInput
 {
     DefinitionKey = started.DefinitionKey,
     ParentInstanceId = started.InstanceId,
     Title = "تأیید موازی",
     ToKind = AssigneeKind.Users,
-    ToIds = ["mortenaho", "cara"],
+    ToIds = ["mortenaho", "tina"],
+    OnAllCompleted = new AssignToInput
+    {
+        Title = "بررسی حقوقی",
+        ToKind = AssigneeKind.Group,
+        ToId = "legal",
+    },
 });
 Console.WriteLine($"parallel {parallel.InstanceId} tasks={parallel.Tasks.Count}");
 
 AssignToResult? legal = null;
 foreach (var task in parallel.Tasks)
 {
-    var advanced = await orch.CompleteAndAssignTo(
-        task.Id,
-        task.AssigneeId,
-        "تأیید شد",
-        _ => new AssignToInput
-        {
-            Title = "بررسی حقوقی",
-            ToKind = AssigneeKind.Group,
-            ToId = "legal",
-        });
+    var done = await eng.CompleteTask(task.Id, task.AssigneeId, "تأیید شد");
     Console.WriteLine(
-        $"complete {task.AssigneeId} allCompleted={advanced.Complete.Completion.AllCompleted} next={(advanced.Next is null ? "—" : advanced.Next.InstanceId)}");
-    if (advanced.Next is not null)
-        legal = advanced.Next;
+        $"complete {task.AssigneeId} allCompleted={done.Completion.AllCompleted} next={(done.Next is null ? "—" : done.Next.InstanceId)}");
+    if (done.Next is not null)
+        legal = done.Next;
 }
 
 if (legal?.Task is null)

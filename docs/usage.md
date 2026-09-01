@@ -11,7 +11,7 @@
 ۵. بررسی وضعیت تکمیل ارجاع‌های چندنفره  
 ۶. تکمیل وظیفه و بستن کامل پرونده  
 ۷. دریافت آمار و فهرست فرایندهای مرتبط با یک کاربر  
-۸. رفتن خودکار به مرحله بعد با `ProcessOrchestrator` (بعد از `allCompleted`)  
+۸. رفتن خودکار به مرحله بعد با `onAllCompleted` (بعد از join موازی)  
 
 <div dir="ltr">
 
@@ -163,7 +163,7 @@ using TaskFlow.Client;
 
 var started = await tf.Start(
     "purchase",
-    "alice",
+    "sara",
     new Dictionary<string, object?> { ["amount"] = 1.5e8 });
 ```
 
@@ -178,14 +178,14 @@ var started = await tf.Start(
 ```csharp
 using TaskFlow.Domain;
 
-var refer = await tf.AssignTo("alice", new AssignToInput
+var refer = await tf.AssignTo("sara", new AssignToInput
 {
     DefinitionKey = started.DefinitionKey,
     ParentInstanceId = started.InstanceId,
     Title = "Legal review",
     ToKind = AssigneeKind.User,
     ToId = "mortenaho",
-    // ToIds = ["mortenaho", "cara"],  // AssigneeKind.Users
+    // ToIds = ["mortenaho", "tina"],  // AssigneeKind.Users
 });
 ```
 
@@ -193,14 +193,14 @@ var refer = await tf.AssignTo("alice", new AssignToInput
 
 ### تخصیص موازی و رفتن خودکار به مرحله بعد
 
-موتور خودش «مرحلهٔ بعد» را بلد نیست؛ فقط ارجاع می‌سازد و با `allCompleted` می‌گوید آیا آن ارجاع تمام شده یا نه. روی کلاینت از `TaskFlowOrchestrator` استفاده کنید (معادل HTTPیِ `ProcessOrchestrator`).
+برای ارجاع موازی، مرحلهٔ بعد را **همان‌جا که AssignTo می‌زنید** با `onAllCompleted` تعریف کنید. هر کاربر فقط `CompleteTask` می‌زند؛ موتور بعد از هر تکمیل یک event داخلی (`TaskCompleted`) می‌فرستد و `ParallelJoinHandler` وقتی `allCompleted` شد خودکار `AssignTo` بعدی را می‌سازد.
 
 **به زبان ساده:**
 
-1. با `AssignTo` و `Users` کار را هم‌زمان به چند نفر بفرست.  
-2. هر نفر تسک خودش را با `CompleteAndAssignTo` تمام می‌کند.  
-3. تا وقتی همه تمام نکرده‌اند، هیچ ارجاع جدیدی ساخته نمی‌شود.  
-4. وقتی آخرین نفر تمام کرد (`allCompleted = true`)، اورکستریتور همان لحظه `AssignTo` بعدی را روی سرور می‌زند.
+1. با `AssignTo` و `Users` کار را هم‌زمان به چند نفر بفرست و `onAllCompleted` را پر کن.  
+2. هر نفر فقط `CompleteTask` می‌زند (بدون orchestrator).  
+3. تا وقتی همه تمام نکرده‌اند، `next` در پاسخ `null` است.  
+4. وقتی آخرین نفر تمام کرد، همان پاسخ `CompleteTask` فیلد `next` را با ارجاع جدید برمی‌گرداند.
 
 #### تصویر کلی جریان
 
@@ -208,9 +208,9 @@ var refer = await tf.AssignTo("alice", new AssignToInput
 
 ```mermaid
 flowchart TD
-    start(["Start purchase<br/>alice"]) --> parallel["AssignTo Users<br/>mortenaho + cara"]
+    start(["Start purchase<br/>sara"]) --> parallel["AssignTo Users<br/>mortenaho + tina"]
     parallel --> m["Task: mortenaho"]
-    parallel --> c["Task: cara"]
+    parallel --> c["Task: tina"]
     m --> join{"AllCompleted?"}
     c --> join
     join -->|"خیر — هنوز باز است"| wait["صبر تا نفر بعدی<br/>Next = null"]
@@ -234,11 +234,11 @@ flowchart TD
 
 ```mermaid
 flowchart RL
-    root["Root instance<br/>alice"]
+    root["Root instance<br/>sara"]
     child1["Child: موازی"]
     child2["Child: حقوقی"]
     t1["Task mortenaho"]
-    t2["Task cara"]
+    t2["Task tina"]
     t3["Task group legal"]
 
     root -->|"AssignTo Users"| child1
@@ -272,20 +272,21 @@ sequenceDiagram
     participant MS as Microservice<br/>+ TaskFlow.Client
     participant Srv as TaskFlow.Server
     participant M as mortenaho
-    participant C as cara
+    participant C as tina
     participant L as legal
 
     MS->>Srv: Start purchase
-    MS->>Srv: AssignTo Users<br/>mortenaho + cara
+    MS->>Srv: AssignTo Users<br/>mortenaho + tina
     Srv-->>M: Task open
     Srv-->>C: Task open
-    M->>MS: CompleteAndAssignTo
+    M->>MS: CompleteTask
     MS->>Srv: CompleteTask
-    Note over MS: AllCompleted = false<br/>Next = null
-    C->>MS: CompleteAndAssignTo
+    Note over Srv: TaskCompleted event<br/>AllCompleted = false
+    Note over MS: next = null
+    C->>MS: CompleteTask
     MS->>Srv: CompleteTask
-    Note over MS: AllCompleted = true
-    MS->>Srv: AssignTo Group legal
+    Note over Srv: ParallelJoinHandler<br/>AssignTo legal
+    Srv-->>MS: next = legal
     Srv-->>L: Task open
     M->>MS: Claim + Complete
     MS->>Srv: claim / complete
@@ -295,47 +296,61 @@ sequenceDiagram
 
 #### نمونه کد
 
-اگر `DefinitionKey` یا `ParentInstanceId` را خالی بگذارید، اورکستریتور از تسکِ تکمیل‌شده پرشان می‌کند. ارجاع بعدی به‌نام `AssignedBy` همان مرحله (مثلاً `alice`) زده می‌شود.
+`DefinitionKey` و `ParentInstanceId` در `onAllCompleted` را می‌توانید خالی بگذارید؛ موتور از تسکِ تکمیل‌شده پر می‌کند. ارجاع بعدی به‌نام `from` همان مرحله (مثلاً `sara`) زده می‌شود.
 
 <div dir="ltr">
 
 ```csharp
-var orch = new TaskFlowOrchestrator(tf);
-
-var parallel = await tf.AssignTo("alice", new AssignToInput
+var parallel = await tf.AssignTo("sara", new AssignToInput
 {
     DefinitionKey = started.DefinitionKey,
     ParentInstanceId = started.InstanceId,
     Title = "تأیید موازی",
     ToKind = AssigneeKind.Users,
-    ToIds = ["mortenaho", "cara"],
+    ToIds = ["mortenaho", "tina"],
+    OnAllCompleted = new AssignToInput
+    {
+        Title = "بررسی حقوقی",
+        ToKind = AssigneeKind.Group,
+        ToId = "legal",
+    },
 });
 
 AssignToResult? legal = null;
 foreach (var task in parallel.Tasks)
 {
-    var advanced = await orch.CompleteAndAssignTo(
-        task.Id,
-        task.AssigneeId,
-        "تأیید شد",
-        _ => new AssignToInput
-        {
-            Title = "بررسی حقوقی",
-            ToKind = AssigneeKind.Group,
-            ToId = "legal",
-        });
+    var done = await tf.CompleteTask(task.Id, task.AssigneeId, "تأیید شد");
 
-    // فقط وقتی آخرین نفر تمام کند، Next پر می‌شود
-    if (advanced.Next is not null)
-        legal = advanced.Next;
+    // فقط وقتی آخرین نفر تمام کند، next پر می‌شود
+    if (done.Next is not null)
+        legal = done.Next;
 }
+```
+
+REST معادل:
+
+```bash
+curl -s -X POST http://127.0.0.1:8081/v1/assignments \
+  -H 'Content-Type: application/json' -H 'X-Actor-Id: sara' \
+  -d '{
+    "definitionKey": "purchase",
+    "parentInstanceId": "INSTANCE",
+    "from": "sara",
+    "title": "تأیید موازی",
+    "join": "all",
+    "to": { "kind": "users", "ids": ["mortenaho", "tina"] },
+    "onAllCompleted": {
+      "title": "بررسی حقوقی",
+      "to": { "kind": "group", "id": "legal" }
+    }
+  }'
 ```
 
 </div>
 
 #### نمونه BFF: یک endpoint برای همهٔ تسک‌های موازی
 
-در پروداکشن کاربر مستقیم TaskFlow را صدا نمی‌زند. UI دکمه «تأیید» را می‌زند؛ **BFF شما** همان `CompleteAndAssignTo` را با قانون مرحلهٔ بعد صدا می‌کند.
+در پروداکشن کاربر مستقیم TaskFlow را صدا نمی‌زند. UI دکمه «تأیید» را می‌زند؛ **BFF شما** فقط `CompleteTask` می‌زند — قانون مرحلهٔ بعد از قبل در `onAllCompleted` ذخیره شده است.
 
 اگر پنج نفر موازی دارید، **پنج endpoint جدا لازم نیست** — همه از یک مسیر با `taskId` متفاوت استفاده می‌کنند:
 
@@ -343,30 +358,28 @@ foreach (var task in parallel.Tasks)
 
 ```http
 POST /api/tasks/task-1/approve   ← mortenaho
-POST /api/tasks/task-2/approve   ← cara
-POST /api/tasks/task-3/approve   ← dan
+POST /api/tasks/task-2/approve   ← tina
+POST /api/tasks/task-3/approve   ← hamid
 ...
 ```
 
 </div>
 
-همان handler، همان callback «مرحله بعد»؛ فقط وقتی **آخرین** نفر complete کرد `Next` پر می‌شود.
+همان handler برای همه؛ فقط وقتی **آخرین** نفر complete کرد `next` پر می‌شود.
 
 <div dir="ltr">
 
 ```csharp
-using TaskFlow.Application;
 using TaskFlow.Client;
-using TaskFlow.Domain;
 using Microsoft.AspNetCore.Mvc;
 
 [ApiController]
 [Route("api")]
 public sealed class TaskApprovalController : ControllerBase
 {
-    private readonly TaskFlowOrchestrator _orch;
+    private readonly TaskFlowClient _tf;
 
-    public TaskApprovalController(TaskFlowOrchestrator orch) => _orch = orch;
+    public TaskApprovalController(TaskFlowClient tf) => _tf = tf;
 
     public sealed class ApproveRequest
     {
@@ -378,26 +391,13 @@ public sealed class TaskApprovalController : ControllerBase
     {
         var userId = User.FindFirst("sub")?.Value ?? ""; // از SSO
 
-        var result = await _orch.CompleteAndAssignTo(
-            taskId,
-            userId,
-            body.Note ?? "تأیید شد",
-            NextStepAfterParallelReview); // ← یک بار تعریف شده
+        var result = await _tf.CompleteTask(taskId, userId, body.Note ?? "تأیید شد");
 
         if (result.Next is not null)
             return Ok(new { status = "all_done", next = result.Next });
 
         return Ok(new { status = "waiting_for_others" });
     }
-
-    // قانون مرحله بعد — یک جا
-    private static AssignToInput NextStepAfterParallelReview(CompleteResult _) =>
-        new()
-        {
-            Title = "بررسی حقوقی",
-            ToKind = AssigneeKind.Group,
-            ToId = "legal",
-        };
 }
 ```
 
@@ -409,7 +409,7 @@ public sealed class TaskApprovalController : ControllerBase
 | نفر ۲ تا ۴ | `false` | همان |
 | نفر ۵ (آخر) | `true` | `{ status: "all_done", next: … legal }` |
 
-ثبت `TaskFlowOrchestrator` در `Program.cs` میکروسرویس:
+ثبت `TaskFlowClient` در `Program.cs` میکروسرویس:
 
 <div dir="ltr">
 
@@ -419,20 +419,23 @@ builder.Services.AddTaskFlowClient(o =>
     o.BaseAddress = new Uri("http://taskflow:8080/");
     o.ApiKey = builder.Configuration["TaskFlow:ApiKey"];
 });
-// AddTaskFlowClient خودش TaskFlowOrchestrator را هم register می‌کند
 ```
 
 </div>
+
+> **Legacy:** `ProcessOrchestrator` / `TaskFlowOrchestrator.CompleteAndAssignTo` هنوز برای callback دستی موجود است؛ برای join موازی جدید `onAllCompleted` را ترجیح دهید.
 
 نمونهٔ دامنهٔ in-process (بدون HTTP): [`examples/Scenario`](https://github.com/mortenaho/WorkFlowEngine/blob/main/examples/Scenario/Program.cs). تست یکپارچهٔ SDK: `ClientSdkTests`.
 
 | مفهوم | معنی کوتاه |
 |--------|------------|
 | `Users` + `ToIds` | چند تسک موازی؛ **همه** باید تمام شوند |
+| `onAllCompleted` | مرحلهٔ بعد؛ موتور بعد از join خودکار `AssignTo` می‌زند |
+| `join: all` | حالت join (پیش‌فرض وقتی `onAllCompleted` داده شود) |
 | `Group` + `ToId` | یک تسک مشترک؛ یکی Claim می‌کند |
-| `CompleteTask` | فقط همین تسک را می‌بندد |
-| `CompleteAndAssignTo` | همان + در صورت `AllCompleted`، `AssignTo` بعدی |
-| `advanced.Next` | ارجاع تازه؛ تا قبل از join برابر `null` است |
+| `CompleteTask` | تسک را می‌بندد؛ در join موازی `next` را برمی‌گرداند |
+| `CompleteAndAssignTo` | Legacy — callback دستی برای مرحله بعد |
+| `done.Next` | ارجاع تازه؛ تا قبل از join برابر `null` است |
 
 ### کارتابل، تکمیل، و فرایندهای کاربر
 
@@ -445,8 +448,8 @@ var groupInbox = await tf.PendingTasks(group: "legal");
 var ended = await tf.CompleteAndEnd(refer.Task!.Id, "mortenaho", "Case closed");
 // ended.Process.Status == "completed"
 
-var mine = await tf.ListUserProcesses("alice");
-var open = await tf.ListUserProcesses("alice", state: "open");
+var mine = await tf.ListUserProcesses("sara");
+var open = await tf.ListUserProcesses("sara", state: "open");
 ```
 
 </div>
@@ -472,11 +475,11 @@ using TaskFlow.Application;
 using TaskFlow.Infrastructure;
 
 var dir = new StaticDirectory(
-    ["alice", "mortenaho", "cara", "dan"],
+    ["sara", "mortenaho", "tina", "hamid"],
     new Dictionary<string, IReadOnlyList<string>>
     {
-        ["legal"] = ["mortenaho", "cara"],
-        ["finance"] = ["dan", "cara"],
+        ["legal"] = ["mortenaho", "tina"],
+        ["finance"] = ["hamid", "tina"],
     });
 var eng = new Engine(new MemoryStore(), dir);
 var orch = new ProcessOrchestrator(eng);
@@ -560,7 +563,7 @@ app.get("/api/inbox", async (req, res) => {
 
 ```json
 POST /v1/processes/start
-{ "processKey": "purchase", "initiator": "alice", "parameters": { "amount": 150000000 } }
+{ "processKey": "purchase", "initiator": "sara", "parameters": { "amount": 150000000 } }
 
 → { "definitionKey": "purchase", "instanceId": "..." }
 ```
@@ -615,7 +618,7 @@ POST /v1/assignments
 {
   "definitionKey": "purchase",
   "parentInstanceId": "<instanceId from start>",
-  "from": "alice",
+  "from": "sara",
   "title": "Review",
   "to": { "kind": "user", "id": "mortenaho" }
 }
@@ -700,7 +703,7 @@ GET /v1/instances/{assignmentInstanceId}/completion
 
 ### ۷. فرایندهای کاربر (User Processes)
 
-متد `GET /v1/users/alice/processes` فهرست فرایندهایی که توسط کاربر `alice` ایجاد شده‌اند را بازمی‌گرداند:
+متد `GET /v1/users/sara/processes` فهرست فرایندهایی که توسط کاربر `sara` ایجاد شده‌اند را بازمی‌گرداند:
 
 | وضعیت (`state`) | توضیحات |
 |-----------------|----------|
@@ -712,7 +715,7 @@ GET /v1/instances/{assignmentInstanceId}/completion
 
 ```json
 {
-  "user": "alice",
+  "user": "sara",
   "open": 1,
   "closed": 2,
   "notStarted": 3,
@@ -759,9 +762,9 @@ GET /v1/instances/{assignmentInstanceId}/completion
 <div dir="ltr">
 
 ```bash
-WF_USERS=alice,mortenaho,cara,dan
-WF_GROUP_legal=mortenaho,cara
-WF_GROUP_finance=dan,cara
+WF_USERS=sara,mortenaho,tina,hamid
+WF_GROUP_legal=mortenaho,tina
+WF_GROUP_finance=hamid,tina
 ```
 
 </div>
@@ -797,8 +800,8 @@ WF_GROUP_finance=dan,cara
 cp .env.example .env
 docker compose up --build
 curl -s http://localhost:8081/health
-curl -s -H 'X-API-Key: local-dev-key' -H 'X-Actor-Id: alice' \
-  http://localhost:8081/v1/users/alice/processes
+curl -s -H 'X-API-Key: local-dev-key' -H 'X-Actor-Id: sara' \
+  http://localhost:8081/v1/users/sara/processes
 ```
 
 </div>

@@ -6,19 +6,19 @@ public class EngineTests
     public async Task StartReturnsDefinitionKeyAndInstanceId()
     {
         var eng = Fixtures.NewEngine();
-        var result = await eng.Start("purchase", "alice", new Dictionary<string, object?> { ["amount"] = 1e8 });
+        var result = await eng.Start("purchase", "sara", new Dictionary<string, object?> { ["amount"] = 1e8 });
         Assert.Equal("purchase", result.DefinitionKey);
         Assert.False(string.IsNullOrEmpty(result.InstanceId));
         var inst = await eng.GetInstance(result.InstanceId);
-        Assert.Equal("alice", inst.StartedBy);
+        Assert.Equal("sara", inst.StartedBy);
     }
 
     [Fact]
     public async Task AssignToPerson()
     {
         var eng = Fixtures.NewEngine();
-        var started = await eng.Start("purchase", "alice");
-        var refer = await eng.AssignTo("alice", new AssignToInput
+        var started = await eng.Start("purchase", "sara");
+        var refer = await eng.AssignTo("sara", new AssignToInput
         {
             DefinitionKey = started.DefinitionKey,
             ParentInstanceId = started.InstanceId,
@@ -38,8 +38,8 @@ public class EngineTests
     public async Task AssignToGroup()
     {
         var eng = Fixtures.NewEngine();
-        var started = await eng.Start("purchase", "alice");
-        var refer = await eng.AssignTo("alice", new AssignToInput
+        var started = await eng.Start("purchase", "sara");
+        var refer = await eng.AssignTo("sara", new AssignToInput
         {
             DefinitionKey = started.DefinitionKey,
             ParentInstanceId = started.InstanceId,
@@ -51,8 +51,8 @@ public class EngineTests
 
         var mortenaho = await eng.PendingTasks("mortenaho", "");
         Assert.Single(mortenaho);
-        var cara = await eng.PendingTasks("cara", "");
-        Assert.Single(cara);
+        var tina = await eng.PendingTasks("tina", "");
+        Assert.Single(tina);
         var group = await eng.PendingTasks("", "legal");
         Assert.Single(group);
 
@@ -60,10 +60,10 @@ public class EngineTests
         var claimed = await eng.ClaimTask(refer.Task.Id, "mortenaho");
         Assert.Equal(TaskStatus.Claimed, claimed.Status);
         Assert.Equal("mortenaho", claimed.ClaimedBy);
-        await Assert.ThrowsAsync<EngineException>(() => eng.ClaimTask(refer.Task.Id, "cara"));
+        await Assert.ThrowsAsync<EngineException>(() => eng.ClaimTask(refer.Task.Id, "tina"));
 
-        var caraInbox = await eng.PendingTasks("cara", "");
-        Assert.Empty(caraInbox);
+        var tinaInbox = await eng.PendingTasks("tina", "");
+        Assert.Empty(tinaInbox);
         var mortenahoInbox = await eng.PendingTasks("mortenaho", "");
         Assert.Single(mortenahoInbox);
         await eng.CompleteTask(refer.Task.Id, "mortenaho", "ok");
@@ -73,8 +73,8 @@ public class EngineTests
     public async Task UnclaimReturnsToGroup()
     {
         var eng = Fixtures.NewEngine();
-        var started = await eng.Start("purchase", "alice");
-        var refer = await eng.AssignTo("alice", new AssignToInput
+        var started = await eng.Start("purchase", "sara");
+        var refer = await eng.AssignTo("sara", new AssignToInput
         {
             DefinitionKey = started.DefinitionKey,
             ToKind = AssigneeKind.Group,
@@ -82,23 +82,23 @@ public class EngineTests
         });
         await eng.ClaimTask(refer.Task!.Id, "mortenaho");
         await eng.UnclaimTask(refer.Task.Id, "mortenaho");
-        var claimed = await eng.ClaimTask(refer.Task.Id, "cara");
-        Assert.Equal("cara", claimed.ClaimedBy);
+        var claimed = await eng.ClaimTask(refer.Task.Id, "tina");
+        Assert.Equal("tina", claimed.ClaimedBy);
     }
 
     [Fact]
     public async Task PendingTasksByUserAndGroup()
     {
         var eng = Fixtures.NewEngine();
-        var started = await eng.Start("purchase", "alice");
-        await eng.AssignTo("alice", new AssignToInput
+        var started = await eng.Start("purchase", "sara");
+        await eng.AssignTo("sara", new AssignToInput
         {
             DefinitionKey = started.DefinitionKey,
             ParentInstanceId = started.InstanceId,
             ToKind = AssigneeKind.User,
             ToId = "mortenaho",
         });
-        await eng.AssignTo("alice", new AssignToInput
+        await eng.AssignTo("sara", new AssignToInput
         {
             DefinitionKey = started.DefinitionKey,
             ParentInstanceId = started.InstanceId,
@@ -107,8 +107,8 @@ public class EngineTests
         });
         var mortenaho = await eng.PendingTasks("mortenaho", "");
         Assert.Single(mortenaho);
-        var dan = await eng.PendingTasks("dan", "");
-        Assert.Single(dan);
+        var hamid = await eng.PendingTasks("hamid", "");
+        Assert.Single(hamid);
         var finance = await eng.PendingTasks("", "finance");
         Assert.Single(finance);
         Assert.Equal(AssigneeKind.Group, finance[0].AssigneeKind);
@@ -118,13 +118,13 @@ public class EngineTests
     public async Task MultiUserAllCompleted()
     {
         var eng = Fixtures.NewEngine();
-        var started = await eng.Start("purchase", "alice");
-        var refer = await eng.AssignTo("alice", new AssignToInput
+        var started = await eng.Start("purchase", "sara");
+        var refer = await eng.AssignTo("sara", new AssignToInput
         {
             DefinitionKey = started.DefinitionKey,
             ParentInstanceId = started.InstanceId,
             ToKind = AssigneeKind.Users,
-            ToIds = ["mortenaho", "cara", "dan"],
+            ToIds = ["mortenaho", "tina", "hamid"],
         });
         Assert.Equal(3, refer.Tasks.Count);
         var comp = await eng.Completion(refer.InstanceId);
@@ -136,8 +136,8 @@ public class EngineTests
         var afterMortenaho = await eng.CompleteTask(byUser["mortenaho"], "mortenaho", "");
         Assert.False(afterMortenaho.Completion.AllCompleted);
         Assert.Equal(1, afterMortenaho.Completion.Completed);
-        await eng.CompleteTask(byUser["cara"], "cara", "");
-        var last = await eng.CompleteTask(byUser["dan"], "dan", "");
+        await eng.CompleteTask(byUser["tina"], "tina", "");
+        var last = await eng.CompleteTask(byUser["hamid"], "hamid", "");
         Assert.True(last.Completion.AllCompleted);
         Assert.Equal(3, last.Completion.Completed);
         Assert.Equal(0, last.Completion.Open);
@@ -146,17 +146,66 @@ public class EngineTests
     }
 
     [Fact]
-    public async Task OrchestratorAdvancesOnlyWhenAllCompleted()
+    public async Task ParallelJoinAutoAdvancesOnCompleteTask()
     {
         var eng = Fixtures.NewEngine();
-        var orch = new ProcessOrchestrator(eng);
-        var started = await eng.Start("purchase", "alice");
-        var parallel = await eng.AssignTo("alice", new AssignToInput
+        var started = await eng.Start("purchase", "sara");
+        var parallel = await eng.AssignTo("sara", new AssignToInput
         {
             DefinitionKey = started.DefinitionKey,
             ParentInstanceId = started.InstanceId,
             ToKind = AssigneeKind.Users,
-            ToIds = ["mortenaho", "cara"],
+            ToIds = ["mortenaho", "tina"],
+            OnAllCompleted = new AssignToInput
+            {
+                Title = "legal",
+                ToKind = AssigneeKind.Group,
+                ToId = "legal",
+            },
+        });
+
+        var first = await eng.CompleteTask(parallel.Tasks[0].Id, parallel.Tasks[0].AssigneeId, "");
+        Assert.False(first.Completion.AllCompleted);
+        Assert.Null(first.Next);
+
+        var second = await eng.CompleteTask(parallel.Tasks[1].Id, parallel.Tasks[1].AssigneeId, "");
+        Assert.True(second.Completion.AllCompleted);
+        Assert.NotNull(second.Next);
+        Assert.NotNull(second.Next!.Task);
+        Assert.Equal(AssigneeKind.Group, second.Next.Task.AssigneeKind);
+        Assert.Equal("legal", second.Next.Task.AssigneeId);
+        Assert.Equal(started.InstanceId, second.Next.Task.ParentInstanceId);
+        Assert.Equal("sara", second.Next.Task.AssignedBy);
+    }
+
+    [Fact]
+    public async Task OnAllCompletedRequiresParallelUsers()
+    {
+        var eng = Fixtures.NewEngine();
+        var started = await eng.Start("purchase", "sara");
+        var ex = await Assert.ThrowsAsync<EngineException>(() => eng.AssignTo("sara", new AssignToInput
+        {
+            DefinitionKey = started.DefinitionKey,
+            ParentInstanceId = started.InstanceId,
+            ToKind = AssigneeKind.User,
+            ToId = "mortenaho",
+            OnAllCompleted = new AssignToInput { ToKind = AssigneeKind.Group, ToId = "legal" },
+        }));
+        Assert.Equal(EngineErrorKind.Invalid, ex.Kind);
+    }
+
+    [Fact]
+    public async Task OrchestratorAdvancesOnlyWhenAllCompleted()
+    {
+        var eng = Fixtures.NewEngine();
+        var orch = new ProcessOrchestrator(eng);
+        var started = await eng.Start("purchase", "sara");
+        var parallel = await eng.AssignTo("sara", new AssignToInput
+        {
+            DefinitionKey = started.DefinitionKey,
+            ParentInstanceId = started.InstanceId,
+            ToKind = AssigneeKind.Users,
+            ToIds = ["mortenaho", "tina"],
         });
 
         var first = await orch.CompleteAndAssignTo(
@@ -178,14 +227,14 @@ public class EngineTests
         Assert.Equal(AssigneeKind.Group, second.Next.Task.AssigneeKind);
         Assert.Equal("legal", second.Next.Task.AssigneeId);
         Assert.Equal(started.InstanceId, second.Next.Task.ParentInstanceId);
-        Assert.Equal("alice", second.Next.Task.AssignedBy);
+        Assert.Equal("sara", second.Next.Task.AssignedBy);
     }
 
     [Fact]
     public async Task StartRequiresFields()
     {
         var eng = Fixtures.NewEngine();
-        await Assert.ThrowsAsync<EngineException>(() => eng.Start("", "alice"));
+        await Assert.ThrowsAsync<EngineException>(() => eng.Start("", "sara"));
         await Assert.ThrowsAsync<EngineException>(() => eng.Start("purchase", ""));
     }
 
@@ -193,14 +242,14 @@ public class EngineTests
     public async Task CompleteForbiddenForOtherUser()
     {
         var eng = Fixtures.NewEngine();
-        var started = await eng.Start("purchase", "alice");
-        var refer = await eng.AssignTo("alice", new AssignToInput
+        var started = await eng.Start("purchase", "sara");
+        var refer = await eng.AssignTo("sara", new AssignToInput
         {
             DefinitionKey = started.DefinitionKey,
             ToKind = AssigneeKind.User,
             ToId = "mortenaho",
         });
-        await Assert.ThrowsAsync<EngineException>(() => eng.CompleteTask(refer.Task!.Id, "cara", ""));
+        await Assert.ThrowsAsync<EngineException>(() => eng.CompleteTask(refer.Task!.Id, "tina", ""));
     }
 
     [Fact]
@@ -209,7 +258,7 @@ public class EngineTests
         var eng = Fixtures.NewEngine();
         var a = await eng.Start("employeeTermination", "hr", new Dictionary<string, object?> { ["employeeId"] = "1001" });
         var b = await eng.Start("employeeTermination", "hr", new Dictionary<string, object?> { ["employeeId"] = "1002" });
-        await eng.Start("purchase", "alice");
+        await eng.Start("purchase", "sara");
         await eng.AssignTo("hr", new AssignToInput
         {
             DefinitionKey = a.DefinitionKey,
@@ -244,7 +293,7 @@ public class EngineTests
     public async Task AssignToUnknownDefinitionFails()
     {
         var eng = Fixtures.NewEngine();
-        var ex = await Assert.ThrowsAsync<EngineException>(() => eng.AssignTo("alice", new AssignToInput
+        var ex = await Assert.ThrowsAsync<EngineException>(() => eng.AssignTo("sara", new AssignToInput
         {
             DefinitionKey = "missing",
             ToKind = AssigneeKind.User,
@@ -257,8 +306,8 @@ public class EngineTests
     public async Task AssignToEmptyGroupFails()
     {
         var eng = Fixtures.NewEngine();
-        var started = await eng.Start("purchase", "alice");
-        var ex = await Assert.ThrowsAsync<EngineException>(() => eng.AssignTo("alice", new AssignToInput
+        var started = await eng.Start("purchase", "sara");
+        var ex = await Assert.ThrowsAsync<EngineException>(() => eng.AssignTo("sara", new AssignToInput
         {
             DefinitionKey = started.DefinitionKey,
             ToKind = AssigneeKind.Group,
@@ -298,9 +347,9 @@ public class EngineTests
     public async Task AssignToMismatchedDefinitionKeyFails()
     {
         var eng = Fixtures.NewEngine();
-        var purchase = await eng.Start("purchase", "alice");
-        await eng.Start("leave", "alice");
-        var ex = await Assert.ThrowsAsync<EngineException>(() => eng.AssignTo("alice", new AssignToInput
+        var purchase = await eng.Start("purchase", "sara");
+        await eng.Start("leave", "sara");
+        var ex = await Assert.ThrowsAsync<EngineException>(() => eng.AssignTo("sara", new AssignToInput
         {
             DefinitionKey = "leave",
             ParentInstanceId = purchase.InstanceId,
@@ -314,8 +363,8 @@ public class EngineTests
     public async Task PersonalTaskCompletesWithoutClaim()
     {
         var eng = Fixtures.NewEngine();
-        var started = await eng.Start("purchase", "alice");
-        var refer = await eng.AssignTo("alice", new AssignToInput
+        var started = await eng.Start("purchase", "sara");
+        var refer = await eng.AssignTo("sara", new AssignToInput
         {
             DefinitionKey = started.DefinitionKey,
             ToKind = AssigneeKind.User,
@@ -330,8 +379,8 @@ public class EngineTests
     public async Task ConcurrentClaimOnlyOneWins()
     {
         var eng = Fixtures.NewEngine();
-        var started = await eng.Start("purchase", "alice");
-        var refer = await eng.AssignTo("alice", new AssignToInput
+        var started = await eng.Start("purchase", "sara");
+        var refer = await eng.AssignTo("sara", new AssignToInput
         {
             DefinitionKey = started.DefinitionKey,
             ToKind = AssigneeKind.Group,
@@ -339,7 +388,7 @@ public class EngineTests
         });
 
         var t1 = eng.ClaimTask(refer.Task!.Id, "mortenaho");
-        var t2 = eng.ClaimTask(refer.Task.Id, "cara");
+        var t2 = eng.ClaimTask(refer.Task.Id, "tina");
         var results = await Task.WhenAll(
             Wrap(t1),
             Wrap(t2));
@@ -348,7 +397,7 @@ public class EngineTests
         Assert.Single(results.Where(r => !r.Ok && r.Kind == EngineErrorKind.AlreadyClaimed));
         var claimed = results.Single(r => r.Ok).Task!;
         Assert.Equal(TaskStatus.Claimed, claimed.Status);
-        Assert.True(claimed.ClaimedBy is "mortenaho" or "cara");
+        Assert.True(claimed.ClaimedBy is "mortenaho" or "tina");
     }
 
     [Fact]
@@ -356,16 +405,16 @@ public class EngineTests
     {
         var store = new MemoryStore();
         var dir = new StaticDirectory(
-            ["alice", "mortenaho"],
+            ["sara", "mortenaho"],
             new Dictionary<string, IReadOnlyList<string>> { ["legal"] = ["mortenaho"] });
         var eng = new Engine(store, dir);
 
         string acmeId;
         using (TenantContext.Use("acme"))
         {
-            var started = await eng.Start("purchase", "alice");
+            var started = await eng.Start("purchase", "sara");
             acmeId = started.InstanceId;
-            await eng.AssignTo("alice", new AssignToInput
+            await eng.AssignTo("sara", new AssignToInput
             {
                 DefinitionKey = started.DefinitionKey,
                 ParentInstanceId = started.InstanceId,
@@ -380,14 +429,14 @@ public class EngineTests
             Assert.Equal(EngineErrorKind.ForbiddenTenant, ex.Kind);
             var list = await eng.ListByProcessKey("purchase");
             Assert.Equal(0, list.Total);
-            var started = await eng.Start("purchase", "alice");
+            var started = await eng.Start("purchase", "sara");
             Assert.NotEqual(acmeId, started.InstanceId);
         }
 
         using (TenantContext.Use("acme"))
         {
             var inst = await eng.GetInstance(acmeId);
-            Assert.Equal("alice", inst.StartedBy);
+            Assert.Equal("sara", inst.StartedBy);
             var list = await eng.ListByProcessKey("purchase");
             Assert.Equal(1, list.Total);
         }
@@ -397,20 +446,20 @@ public class EngineTests
     public async Task CompleteAndEndClosesRootAndCancelsSiblings()
     {
         var eng = Fixtures.NewEngine();
-        var started = await eng.Start("purchase", "alice");
-        var mortenaho = await eng.AssignTo("alice", new AssignToInput
+        var started = await eng.Start("purchase", "sara");
+        var mortenaho = await eng.AssignTo("sara", new AssignToInput
         {
             DefinitionKey = started.DefinitionKey,
             ParentInstanceId = started.InstanceId,
             ToKind = AssigneeKind.User,
             ToId = "mortenaho",
         });
-        var cara = await eng.AssignTo("alice", new AssignToInput
+        var tina = await eng.AssignTo("sara", new AssignToInput
         {
             DefinitionKey = started.DefinitionKey,
             ParentInstanceId = started.InstanceId,
             ToKind = AssigneeKind.User,
-            ToId = "cara",
+            ToId = "tina",
         });
 
         var ended = await eng.CompleteAndEnd(mortenaho.Task!.Id, "mortenaho", "بسته شد");
@@ -420,19 +469,19 @@ public class EngineTests
         Assert.Equal(started.InstanceId, ended.Process.InstanceId);
         Assert.Equal(0, ended.Process.TasksOpen);
 
-        var caraTask = await eng.GetTask(cara.Task!.Id);
-        Assert.Equal(TaskStatus.Cancelled, caraTask.Status);
-        Assert.Empty(await eng.PendingTasks("cara", ""));
+        var tinaTask = await eng.GetTask(tina.Task!.Id);
+        Assert.Equal(TaskStatus.Cancelled, tinaTask.Status);
+        Assert.Empty(await eng.PendingTasks("tina", ""));
 
         var root = await eng.GetInstance(started.InstanceId);
         Assert.Equal(InstanceStatus.Completed, root.Status);
 
-        var ex = await Assert.ThrowsAsync<EngineException>(() => eng.AssignTo("alice", new AssignToInput
+        var ex = await Assert.ThrowsAsync<EngineException>(() => eng.AssignTo("sara", new AssignToInput
         {
             DefinitionKey = started.DefinitionKey,
             ParentInstanceId = started.InstanceId,
             ToKind = AssigneeKind.User,
-            ToId = "dan",
+            ToId = "hamid",
         }));
         Assert.Equal(EngineErrorKind.Invalid, ex.Kind);
     }
@@ -441,17 +490,17 @@ public class EngineTests
     public async Task ListUserProcessesByState()
     {
         var eng = Fixtures.NewEngine();
-        await eng.Start("leave", "alice");
-        var open = await eng.Start("purchase", "alice");
-        await eng.AssignTo("alice", new AssignToInput
+        await eng.Start("leave", "sara");
+        var open = await eng.Start("purchase", "sara");
+        await eng.AssignTo("sara", new AssignToInput
         {
             DefinitionKey = open.DefinitionKey,
             ParentInstanceId = open.InstanceId,
             ToKind = AssigneeKind.User,
             ToId = "mortenaho",
         });
-        var closing = await eng.Start("travel", "alice");
-        var refer = await eng.AssignTo("alice", new AssignToInput
+        var closing = await eng.Start("travel", "sara");
+        var refer = await eng.AssignTo("sara", new AssignToInput
         {
             DefinitionKey = closing.DefinitionKey,
             ParentInstanceId = closing.InstanceId,
@@ -461,23 +510,23 @@ public class EngineTests
         await eng.CompleteAndEnd(refer.Task!.Id, "mortenaho", "ok");
         await eng.Start("purchase", "mortenaho");
 
-        var all = await eng.ListUserProcesses("alice");
-        Assert.Equal("alice", all.User);
+        var all = await eng.ListUserProcesses("sara");
+        Assert.Equal("sara", all.User);
         Assert.Equal(1, all.NotStarted);
         Assert.Equal(1, all.Open);
         Assert.Equal(1, all.Closed);
         Assert.Equal(3, all.Total);
 
-        var notStarted = await eng.ListUserProcesses("alice", ProcessState.NotStarted);
+        var notStarted = await eng.ListUserProcesses("sara", ProcessState.NotStarted);
         Assert.Equal(1, notStarted.Total);
         Assert.Equal("leave", notStarted.Instances[0].ProcessKey);
         Assert.Equal(0, notStarted.Instances[0].TaskTotal);
 
-        var running = await eng.ListUserProcesses("alice", ProcessState.Open);
+        var running = await eng.ListUserProcesses("sara", ProcessState.Open);
         Assert.Equal(1, running.Total);
         Assert.Equal(open.InstanceId, running.Instances[0].InstanceId);
 
-        var closed = await eng.ListUserProcesses("alice", ProcessState.Closed);
+        var closed = await eng.ListUserProcesses("sara", ProcessState.Closed);
         Assert.Equal(1, closed.Total);
         Assert.Equal(InstanceStatus.Completed, closed.Instances[0].Status);
 

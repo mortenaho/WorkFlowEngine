@@ -2,6 +2,7 @@ import DefaultTheme from 'vitepress/theme'
 import { onMounted, watch, nextTick } from 'vue'
 import { useRoute } from 'vitepress'
 import mermaid from 'mermaid'
+import CustomLayout from './components/CustomLayout.vue'
 import './custom.css'
 
 mermaid.initialize({
@@ -12,19 +13,19 @@ mermaid.initialize({
   themeVariables: {
     fontFamily: 'Vazirmatn, Tahoma, sans-serif',
     fontSize: '14px',
-    primaryColor: '#e8f4ff',
-    primaryBorderColor: '#3DADFF',
-    primaryTextColor: '#1a1a2e',
-    secondaryColor: '#e8f5e9',
-    secondaryBorderColor: '#66D575',
-    tertiaryColor: '#fff8e1',
-    tertiaryBorderColor: '#FFC943',
-    lineColor: '#5f6368',
-    textColor: '#1a1a2e',
-    mainBkg: '#e8f4ff',
-    nodeBorder: '#3DADFF',
-    clusterBkg: '#f8f9fa',
-    titleColor: '#1a1a2e',
+    primaryColor: '#eef2ff',
+    primaryBorderColor: '#6366f1',
+    primaryTextColor: '#1e1b4b',
+    secondaryColor: '#ecfeff',
+    secondaryBorderColor: '#06b6d4',
+    tertiaryColor: '#fef3c7',
+    tertiaryBorderColor: '#f59e0b',
+    lineColor: '#64748b',
+    textColor: '#1e293b',
+    mainBkg: '#eef2ff',
+    nodeBorder: '#6366f1',
+    clusterBkg: '#f8fafc',
+    titleColor: '#1e293b',
     edgeLabelBackground: '#ffffff',
   },
   flowchart: {
@@ -79,7 +80,8 @@ async function renderMermaidDiagrams() {
 }
 
 export default {
-  ...DefaultTheme,
+  extends: DefaultTheme,
+  Layout: CustomLayout,
   setup() {
     const route = useRoute()
 

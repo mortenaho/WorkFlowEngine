@@ -75,6 +75,7 @@ public static class ApiMapper
     {
         Task = r.Task.ToDto(),
         Completion = r.Completion.ToDto(),
+        Next = r.Next?.ToDto(),
     };
 
     public static CompleteAndEndResultDto ToDto(this CompleteAndEndResult r) => new()

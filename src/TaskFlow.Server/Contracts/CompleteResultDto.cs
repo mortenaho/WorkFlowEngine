@@ -4,4 +4,5 @@ public sealed class CompleteResultDto
 {
     public TaskDto Task { get; set; } = new();
     public CompletionDto Completion { get; set; } = new();
+    public AssignToResultDto? Next { get; set; }
 }

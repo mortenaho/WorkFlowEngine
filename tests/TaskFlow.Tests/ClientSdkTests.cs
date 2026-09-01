@@ -29,38 +29,34 @@ public class ClientSdkTests : IAsyncLifetime
     {
         await _client.EnsureHealthy();
 
-        var started = await _client.Start("purchase", "alice", new Dictionary<string, object?> { ["amount"] = 10 });
+        var started = await _client.Start("purchase", "sara", new Dictionary<string, object?> { ["amount"] = 10 });
         Assert.Equal("purchase", started.DefinitionKey);
 
-        var refer = await _client.AssignTo("alice", new AssignToInput
+        var refer = await _client.AssignTo("sara", new AssignToInput
         {
             DefinitionKey = started.DefinitionKey,
             ParentInstanceId = started.InstanceId,
             Title = "بررسی",
             ToKind = AssigneeKind.Users,
-            ToIds = ["mortenaho", "cara"],
+            ToIds = ["mortenaho", "tina"],
+            OnAllCompleted = new AssignToInput
+            {
+                Title = "حقوقی",
+                ToKind = AssigneeKind.Group,
+                ToId = "legal",
+            },
         });
         Assert.Equal(2, refer.Tasks.Count);
 
         var inbox = await _client.PendingTasks("mortenaho");
         Assert.Single(inbox);
 
-        var orch = new TaskFlowOrchestrator(_client);
         AssignToResult? next = null;
         foreach (var task in refer.Tasks)
         {
-            var advanced = await orch.CompleteAndAssignTo(
-                task.Id,
-                task.AssigneeId,
-                "ok",
-                _ => new AssignToInput
-                {
-                    Title = "حقوقی",
-                    ToKind = AssigneeKind.Group,
-                    ToId = "legal",
-                });
-            if (advanced.Next is not null)
-                next = advanced.Next;
+            var done = await _client.CompleteTask(task.Id, task.AssigneeId, "ok");
+            if (done.Next is not null)
+                next = done.Next;
         }
 
         Assert.NotNull(next);
@@ -73,7 +69,7 @@ public class ClientSdkTests : IAsyncLifetime
         var ended = await _client.CompleteAndEnd(claimed.Id, "mortenaho", "done");
         Assert.Equal(InstanceStatus.Completed, ended.Process.Status);
 
-        var mine = await _client.ListUserProcesses("alice");
+        var mine = await _client.ListUserProcesses("sara");
         Assert.True(mine.Total >= 1);
     }
 }

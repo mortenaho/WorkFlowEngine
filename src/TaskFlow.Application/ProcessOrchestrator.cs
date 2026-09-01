@@ -15,8 +15,8 @@ public sealed class ProcessOrchestrator(Engine engine)
         CancellationToken cancellationToken = default)
     {
         var done = await engine.CompleteTask(taskId, actor, note, parameters, cancellationToken);
-        AssignToResult? next = null;
-        if (done.Completion.AllCompleted && nextWhenAllCompleted is not null)
+        AssignToResult? next = done.Next;
+        if (next is null && done.Completion.AllCompleted && nextWhenAllCompleted is not null)
         {
             var input = nextWhenAllCompleted(done);
             if (input is not null)

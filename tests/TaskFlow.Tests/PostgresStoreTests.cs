@@ -10,19 +10,19 @@ public class PostgresStoreTests
             return;
 
         await using var store = await PostgresStore.Open(dsn);
-        var dir = new StaticDirectory(["alice", "mortenaho"], new Dictionary<string, IReadOnlyList<string>>
+        var dir = new StaticDirectory(["sara", "mortenaho"], new Dictionary<string, IReadOnlyList<string>>
         {
             ["legal"] = ["mortenaho"],
         });
         var eng = new Engine(store, dir);
         using var tenant = TenantContext.Use("test-" + Ids.New()[..8]);
-        var started = await eng.Start("purchase-pg", "alice", new Dictionary<string, object?> { ["n"] = 1 });
-        var refer = await eng.AssignTo("alice", new AssignToInput
+        var started = await eng.Start("purchase-pg", "sara", new Dictionary<string, object?> { ["n"] = 1 });
+        var refer = await eng.AssignTo("sara", new AssignToInput
         {
             DefinitionKey = started.DefinitionKey,
             ParentInstanceId = started.InstanceId,
             ToKind = AssigneeKind.Users,
-            ToIds = ["alice", "mortenaho"],
+            ToIds = ["sara", "mortenaho"],
         });
         await eng.CompleteTask(refer.Tasks[0].Id, refer.Tasks[0].AssigneeId, "");
         var last = await eng.CompleteTask(refer.Tasks[1].Id, refer.Tasks[1].AssigneeId, "");

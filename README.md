@@ -32,8 +32,8 @@ dotnet test
 
 ```bash
 curl -s -X POST http://127.0.0.1:8081/v1/processes/start \
-  -H 'Content-Type: application/json' -H 'X-Actor-Id: alice' \
-  -d '{"processKey":"purchase","initiator":"alice","parameters":{"amount":150000000}}'
+  -H 'Content-Type: application/json' -H 'X-Actor-Id: sara' \
+  -d '{"processKey":"purchase","initiator":"sara","parameters":{"amount":150000000}}'
 ```
 
 </div>
@@ -54,8 +54,8 @@ curl -s http://127.0.0.1:8081/v1/processes/employeeTermination/instances
 
 ```bash
 curl -s -X POST http://127.0.0.1:8081/v1/assignments \
-  -H 'Content-Type: application/json' -H 'X-Actor-Id: alice' \
-  -d '{"definitionKey":"purchase","parentInstanceId":"INSTANCE","from":"alice","title":"Review","to":{"kind":"user","id":"mortenaho"}}'
+  -H 'Content-Type: application/json' -H 'X-Actor-Id: sara' \
+  -d '{"definitionKey":"purchase","parentInstanceId":"INSTANCE","from":"sara","title":"Review","to":{"kind":"user","id":"mortenaho"}}'
 ```
 
 </div>
@@ -114,13 +114,13 @@ curl -s -X POST http://127.0.0.1:8081/v1/tasks/TASK_ID/complete-and-end \
 <div dir="ltr">
 
 ```bash
-curl -s 'http://127.0.0.1:8081/v1/users/alice/processes'
-curl -s 'http://127.0.0.1:8081/v1/users/alice/processes?state=open'
+curl -s 'http://127.0.0.1:8081/v1/users/sara/processes'
+curl -s 'http://127.0.0.1:8081/v1/users/sara/processes?state=open'
 ```
 
 </div>
 
-**۸. رفتن خودکار به مرحله بعد** — موتور مرحلهٔ بعد را خودش نمی‌داند؛ با `TaskFlowOrchestrator` (SDK) یا `ProcessOrchestrator` (in-process) بعد از `allCompleted` یک `AssignTo` بعدی می‌سازید. دیاگرام و توضیح: [docs/usage.md](docs/usage.md#تخصیص-موازی-و-رفتن-خودکار-به-مرحله-بعد).
+**۸. رفتن خودکار به مرحله بعد** — در ارجاع موازی `onAllCompleted` را در `AssignTo` بگذارید؛ هر کاربر فقط `CompleteTask` می‌زند و موتور بعد از join خودکار مرحله بعد را می‌سازد. جزئیات: [docs/usage.md](docs/usage.md#تخصیص-موازی-و-رفتن-خودکار-به-مرحله-بعد).
 
 ## SDK برای میکروسرویس‌ها (C#)
 
@@ -159,7 +159,7 @@ docker compose up --build
 | `ASPNETCORE_URLS` | خالی | اولویت بالاتر برای آدرس گوش دادن |
 | `DATABASE_URL` | خالی | اتصال به Postgres (خالی = حافظه موقت) |
 | `WF_USERS` | خالی | خالی = `OpenDirectory` (هر شناسه پذیرفته می‌شود)؛ در غیر این صورت فهرست کاربران دایرکتوری ایستا |
-| `WF_GROUP_<id>` | — | اعضای گروه `id` (مثال: `WF_GROUP_legal=mortenaho,cara`) |
+| `WF_GROUP_<id>` | — | اعضای گروه `id` (مثال: `WF_GROUP_legal=mortenaho,tina`) |
 | `WF_API_KEYS` | در Development خالی؛ در پروداکشن اجباری | کلید مشترک سرویس (نه توکن لاگین). فقط بک‌اند/Gateway با `X-API-Key` بفرستد — نه React |
 | `ASPNETCORE_ENVIRONMENT` | بسته به اجرا | در `Development` می‌توان بدون کلید کار کرد |
 
@@ -174,7 +174,7 @@ docker compose up --build
 <div dir="ltr">
 
 ```bash
-npm install && npm run docs:dev   # preview docs site locally
+npm install && npm run docs:dev   # پیش‌نمایش سایت آموزشی (VitePress)
 ```
 
 </div>

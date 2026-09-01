@@ -4,59 +4,38 @@ layout: home
 hero:
   name: TaskFlow
   text: موتور گردش کار
-  tagline: ارجاع و مدیریت فرایند بر پایه ASP.NET Core — بدون BPMN، با API سبک و سرراست
+  tagline: ارجاع، کارتابل و join موازی — بدون BPMN، با API سبک و SDK برای میکروسرویس‌ها
   image:
     src: /favicon.svg
     alt: TaskFlow
   actions:
     - theme: brand
-      text: راهنمای استفاده
+      text: شروع سریع
+      link: /getting-started
+    - theme: alt
+      text: راهنمای کامل
       link: /usage
     - theme: alt
-      text: معماری سیستم
+      text: معماری
       link: /architecture
-    - theme: alt
-      text: مخزن GitHub
-      link: https://github.com/mortenaho/WorkFlowEngine
 
 features:
   - icon: 🚀
-    title: شروع سریع
-    details: با Start یک فرایند را آغاز کنید و با AssignTo کار را به کاربر، گروه یا چند نفر هم‌زمان ارجاع دهید.
-  - icon: 📋
-    title: کارتابل و Claim
-    details: PendingTasks برای inbox، Claim/Unclaim برای تسک‌های گروهی، و Complete برای بستن هر مرحله.
+    title: شروع در چند دقیقه
+    details: Start، AssignTo و Complete با REST یا SDK — بدون موتور BPMN سنگین.
   - icon: 🔀
     title: ارجاع موازی
-    details: ToKind=users چند تسک موازی می‌سازد؛ CompleteAndAssignTo بعد از allCompleted خودکار مرحله بعد را می‌سازد.
-  - icon: 🏗️
-    title: Clean Architecture
-    details: Domain، Application، Infrastructure و Server — با Postgres یا MemoryStore و SDK برای میکروسرویس‌ها.
+    details: چند نفر هم‌زمان کار می‌کنند؛ بعد از join، مرحلهٔ بعد خودکار ساخته می‌شود.
+  - icon: 🧩
+    title: SDK برای میکروسرویس
+    details: یک TaskFlow.Server مشترک؛ هر سرویس با TaskFlow.Client به همان آدرس وصل می‌شود.
+  - icon: 📋
+    title: کارتابل و Claim
+    details: PendingTasks، Claim/Unclaim برای تسک گروهی، و Complete برای بستن مرحله.
   - icon: 🔐
     title: BFF و API Key
-    details: React مستقیم به انجین وصل نمی‌شود؛ بک‌اند شما با X-API-Key و X-Actor-Id با TaskFlow.Server صحبت می‌کند.
+    details: React مستقیم به انجین وصل نمی‌شود — کلید فقط در بک‌اند شما می‌ماند.
   - icon: 🐘
-    title: Postgres
-    details: مهاجرت خودکار، سه جدول اصلی (definitions، instances، tasks) — جزئیات کامل در مستند پایگاه داده.
+    title: Postgres یا حافظه
+    details: مهاجرت خودکار، سه جدول اصلی — یا MemoryStore برای توسعهٔ سریع.
 ---
-
-## مستندات
-
-| سند | توضیح |
-|-----|--------|
-| [راهنمای استفاده](./usage) | API، SDK، Docker، ارجاع موازی، CompleteAndAssignTo |
-| [معماری سیستم](./architecture) | لایه‌ها، Engine، اورکستریتور، امنیت |
-| [پایگاه داده](./database) | اسکیما، کوئری‌ها، مهاجرت، عملیات |
-
-## اجرای محلی
-
-<div dir="ltr">
-
-```bash
-dotnet run --project src/TaskFlow.Server
-dotnet test
-```
-
-</div>
-
-Swagger: `http://127.0.0.1:8081/swagger`

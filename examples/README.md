@@ -15,7 +15,7 @@ dotnet run --project examples/Scenario
 
 ## سناریوی خرید: موازی → حقوقی
 
-`alice` فرایند `purchase` را شروع می‌کند و هم‌زمان به `mortenaho` و `cara` ارجاع می‌دهد. تکمیل‌ها از `ProcessOrchestrator.CompleteAndAssignTo` می‌گذرند؛ فقط وقتی **هر دو** تمام شدند، ارجاع گروهی به `legal` خودکار ساخته می‌شود. بعد `mortenaho` آن را Claim و Complete می‌کند.
+`sara` فرایند `purchase` را شروع می‌کند و هم‌زمان به `mortenaho` و `tina` ارجاع می‌دهد — با `onAllCompleted` برای مرحلهٔ حقوقی. هر نفر فقط `CompleteTask` می‌زند؛ وقتی **هر دو** تمام شدند، موتور خودکار ارجاع گروهی به `legal` را می‌سازد. بعد `mortenaho` آن را Claim و Complete می‌کند.
 
 ### دیاگرام ساده
 
@@ -23,9 +23,9 @@ dotnet run --project examples/Scenario
 
 ```mermaid
 flowchart TD
-    start([alice: Start purchase]) --> parallel["AssignTo موازی به mortenaho و cara"]
+    start([sara: Start purchase]) --> parallel["AssignTo موازی به mortenaho و tina"]
     parallel --> a[mortenaho تمام می‌کند]
-    parallel --> b[cara تمام می‌کند]
+    parallel --> b[tina تمام می‌کند]
     a --> gate{هر دو تمام شدند؟}
     b --> gate
     gate -->|"هنوز نه"| wait[Next خالی می‌ماند]
@@ -42,6 +42,6 @@ flowchart TD
 
 ### نکتهٔ مهم
 
-موتور به‌تنهایی مرحلهٔ بعد را اجرا نمی‌کند؛ `CompleteAndAssignTo` فقط وقتی `allCompleted` شود callback شما را به یک `AssignTo` تبدیل می‌کند. الگوی BFF (یک endpoint برای N کاربر موازی): [docs/usage.md](../docs/usage.md#نمونه-bff-یک-endpoint-برای-همهٔ-تسک‌های-موازی).
+موتور بعد از هر `CompleteTask` event داخلی می‌فرستد. اگر `onAllCompleted` در AssignTo موازی تعریف شده باشد، `ParallelJoinHandler` بعد از join خودکار مرحله بعد را می‌سازد. الگوی BFF: [docs/usage.md](../docs/usage.md#نمونه-bff-یک-endpoint-برای-همهٔ-تسک‌های-موازی).
 
 </div>

@@ -360,7 +360,7 @@ COMMIT;
 
 | id | parent_instance_id | status | started_by | vars |
 |----|--------------------|--------|------------|------|
-| `root_1` | `''` | `running` | `alice` | `{"amount": 150000000}` |
+| `root_1` | `''` | `running` | `sara` | `{"amount": 150000000}` |
 
 ### ۲. تخصیص کار به گروه حقوقی (AssignTo)
 

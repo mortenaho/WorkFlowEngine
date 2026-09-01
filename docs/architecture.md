@@ -23,6 +23,7 @@ WorkFlowEngine/
 │   ├── TaskFlow.Application/
 │   │   ├── Engine.cs
 │   │   ├── ProcessOrchestrator.cs
+│   │   ├── Handlers/ParallelJoinHandler.cs
 │   │   ├── Ports/
 │   │   ├── Tenancy/
 │   │   └── Results/
@@ -49,7 +50,8 @@ WorkFlowEngine/
 | `Domain/Common` | Tenant، Vars، Ids |
 | `Domain/Errors` | EngineException، EngineErrorKind |
 | `Application/Engine.cs` | قوانین کسب‌وکار: شروع، ارجاع، تکمیل |
-| `Application/ProcessOrchestrator.cs` | پس از `allCompleted`، ارجاع مرحلهٔ بعد |
+| `Application/Handlers/ParallelJoinHandler.cs` | بعد از join موازی، `AssignTo` بعدی از `onAllCompleted` |
+| `Application/ProcessOrchestrator.cs` | Legacy — callback دستی برای مرحله بعد |
 | `Application/Ports` | رابط‌ها: IStore، IDirectory، ITenantProvider |
 | `Infrastructure/Persistence` | MemoryStore، PostgresStore |
 | `Infrastructure/Identity` | OpenDirectory (پیش‌فرض)، StaticDirectory |
@@ -76,7 +78,7 @@ Server.Program         →  wires Store / Directory / Engine
 | پروژه | نقش و مسئولیت | لایه‌های مجاز جهت وابستگی |
 |------|----------------|--------------------------|
 | `TaskFlow.Domain` | موجودیت‌ها و خطاهای دامنه (`Definition`, `ProcessInstance`, `WorkflowTask`, `EngineException`) | بدون وابستگی به لایه‌های بیرونی |
-| `TaskFlow.Application` | هستهٔ فرایند (`Engine` و `ProcessOrchestrator`) و پورت‌ها (`IStore`, `IDirectory`) | صرفاً وابسته به `Domain` |
+| `TaskFlow.Application` | هستهٔ فرایند (`Engine`، `ParallelJoinHandler`) و پورت‌ها (`IStore`, `IDirectory`) | صرفاً وابسته به `Domain` |
 | `TaskFlow.Infrastructure` | پیاده‌سازی ذخیره‌ساز پایگاه داده (Postgres / حافظه) و دایرکتوری کاربران | وابسته به `Application` و `Domain` |
 | `TaskFlow.Server` | رابط REST، مدیریت DTOها، Swagger و ترکیب وابستگی‌ها | وابسته به `Application` و `Infrastructure` |
 
@@ -137,29 +139,34 @@ flowchart RL
 - **وضعیت اینستنس:** تا زمانی که وظایف باز داشته باشد در وضعیت `running` است؛ پس از تکمیل تمامی وظایفِ مرتبط با همان ارجاع به `completed` تغییر می‌یابد.
 - **وضعیت تسک:** شامل `open` (باز)، `claimed` (تحویل‌گرفته‌شده)، `done` (تکمیل‌شده) و `cancelled` (لغوشده).
 
-### رفتن خودکار به مرحله بعد (ProcessOrchestrator)
+### رفتن خودکار به مرحله بعد (Parallel Join)
 
-`Engine` فقط primitiveها را دارد: `Start`، `AssignTo`، `CompleteTask`، `Completion`. مسیر «بعد از این مرحله، مرحلهٔ فلان» داخل definition ذخیره نمی‌شود.
+`Engine` primitiveها را دارد: `Start`، `AssignTo`، `CompleteTask`، `Completion`. برای join موازی، مرحلهٔ بعد با `onAllCompleted` روی همان `AssignTo` تعریف می‌شود و در `Parameters` اینستنس ذخیره می‌گردد.
 
-برای سناریوهای ثابت (مثلاً موازی → حقوقی)، کلاس `ProcessOrchestrator` روی `CompleteTask` می‌نشیند و وقتی `allCompleted` شد همان callback شما را به یک `AssignTo` جدید تبدیل می‌کند:
+بعد از هر `CompleteTask`، event داخلی `TaskCompleted` منتشر می‌شود. `ParallelJoinHandler` بررسی می‌کند آیا اینستنس join موازی است و `allCompleted` شده؛ اگر بله، `AssignTo` بعدی را می‌سازد:
 
 <div dir="ltr">
 
 ```mermaid
 flowchart TD
-    complete["CompleteTask"] --> check{"AllCompleted?"}
-    check -->|"خیر"| stop(["فقط CompleteResult<br/>Next = null"])
-    check -->|"بله"| refer["AssignTo<br/>مرحله بعد"]
-    refer --> out(["CompleteAndAssignToResult<br/>با Next"])
+    complete["CompleteTask"] --> event["TaskCompleted event"]
+    event --> handler["ParallelJoinHandler"]
+    handler --> check{"Join + AllCompleted?"}
+    check -->|"خیر"| stop(["CompleteResult<br/>next = null"])
+    check -->|"بله"| refer["AssignTo از onAllCompleted"]
+    refer --> out(["CompleteResult<br/>با next"])
 
     style complete fill:#C2E5FF,stroke:#3DADFF,color:#1a1a2e
-    style check fill:#FFECBD,stroke:#FFC943,color:#1a1a2e
+    style event fill:#DCCCFF,stroke:#874FFF,color:#1a1a2e
+    style handler fill:#FFECBD,stroke:#FFC943,color:#1a1a2e
     style refer fill:#CDF4D3,stroke:#66D575,color:#1a1a2e
     style stop fill:#f5f5f5,stroke:#bdbdbd,color:#616161
     style out fill:#DCCCFF,stroke:#874FFF,color:#1a1a2e
 ```
 
 </div>
+
+`ProcessOrchestrator` / `TaskFlowOrchestrator.CompleteAndAssignTo` برای callback دستی (legacy) باقی مانده است.
 
 شرح روان‌تر با دیاگرام سناریو و نمونه کد: [usage.md — ارجاع موازی و رفتن خودکار](usage.md#تخصیص-موازی-و-رفتن-خودکار-به-مرحله-بعد).
 
@@ -239,7 +246,7 @@ erDiagram
 
 - تکمیل تسک شخصی صرفاً توسط همان فرد امکان‌پذیر است.
 - تکمیل تسک گروهی تنها توسط عضوی که تسک را تحویل گرفته (Claim کرده) مجاز است.
-- اگر بخواهید بعد از `allCompleted` خودکار ارجاع بعدی ساخته شود، از `ProcessOrchestrator.CompleteAndAssignTo` استفاده کنید (جزئیات در [usage.md](usage.md#تخصیص-موازی-و-رفتن-خودکار-به-مرحله-بعد)).
+- برای join موازی با `onAllCompleted`، `ParallelJoinHandler` بعد از `allCompleted` خودکار `AssignTo` بعدی را می‌سازد (جزئیات در [usage.md](usage.md#تخصیص-موازی-و-رفتن-خودکار-به-مرحله-بعد)).
 
 ### ۵. تکمیل و بستن کل فرایند (Complete and End)
 

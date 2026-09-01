@@ -6,13 +6,23 @@ public sealed class Engine
     private readonly IDirectory _dir;
     private readonly ITenantProvider _tenant;
     private readonly Func<DateTime> _clock;
+    private readonly IReadOnlyList<ITaskCompletedHandler> _taskCompletedHandlers;
 
-    public Engine(IStore store, IDirectory directory, Func<DateTime>? clock = null, ITenantProvider? tenant = null)
+    public Engine(
+        IStore store,
+        IDirectory directory,
+        Func<DateTime>? clock = null,
+        ITenantProvider? tenant = null,
+        IEnumerable<ITaskCompletedHandler>? taskCompletedHandlers = null)
     {
         _store = store;
         _dir = directory;
         _tenant = tenant ?? new AmbientTenantProvider();
         _clock = clock ?? (() => DateTime.UtcNow);
+        var handlers = taskCompletedHandlers?.ToList() ?? [];
+        if (handlers.Count == 0)
+            handlers.Add(new ParallelJoinHandler(this));
+        _taskCompletedHandlers = handlers;
     }
 
     private DateTime Now()
@@ -248,6 +258,7 @@ public sealed class Engine
             CreatedAt = now,
             UpdatedAt = now,
         };
+        AttachJoinIfNeeded(inst, input, ids.Count, actor);
         await _store.CreateInstance(inst, cancellationToken);
 
         var tasks = new List<WorkflowTask>(ids.Count);
@@ -468,7 +479,46 @@ public sealed class Engine
             inst.UpdatedAt = now;
             await _store.UpdateInstance(inst, cancellationToken);
         }
-        return new CompleteResult { Task = updated, Completion = comp };
+
+        var result = new CompleteResult { Task = updated, Completion = comp };
+        foreach (var handler in _taskCompletedHandlers)
+        {
+            var next = await handler.HandleAsync(new TaskCompletedEvent { Complete = result }, cancellationToken);
+            if (next is not null && result.Next is null)
+                result.Next = next;
+        }
+
+        return result;
+    }
+
+    internal async Task<bool> TryMarkJoinAdvanced(string instanceId, CancellationToken cancellationToken = default)
+    {
+        var inst = await GetInstance(instanceId, cancellationToken);
+        var join = InstanceJoinState.Read(inst);
+        if (join is null || join.Advanced)
+            return false;
+
+        InstanceJoinState.MarkAdvanced(inst);
+        inst.UpdatedAt = Now();
+        await _store.UpdateInstance(inst, cancellationToken);
+        return true;
+    }
+
+    private static void AttachJoinIfNeeded(ProcessInstance inst, AssignToInput input, int assigneeCount, string actor)
+    {
+        if (input.OnAllCompleted is null)
+            return;
+
+        if (input.ToKind != AssigneeKind.Users || assigneeCount < 2)
+            throw EngineException.Invalid("onAllCompleted requires to.kind=users with at least two ids");
+
+        var mode = input.Join.Trim();
+        if (mode.Length == 0)
+            mode = JoinMode.All;
+        if (mode != JoinMode.All)
+            throw EngineException.Invalid($"unsupported join mode: {mode}");
+
+        InstanceJoinState.Attach(inst, actor, mode, input.OnAllCompleted);
     }
 
     public async Task<CompleteAndEndResult> CompleteAndEnd(string taskId, string actor, string note, Dictionary<string, object?>? parameters = null, CancellationToken cancellationToken = default)

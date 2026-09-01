@@ -11,16 +11,7 @@ public sealed class AssignmentsController(Engine engine) : ControllerBase
     {
         body ??= new();
         var from = body.From.Length > 0 ? body.From : Request.Actor();
-        var result = await engine.AssignTo(from, new AssignToInput
-        {
-            DefinitionKey = body.DefinitionKey,
-            ParentInstanceId = body.ParentInstanceId,
-            Title = body.Title,
-            Parameters = body.Parameters,
-            ToKind = body.To.Kind,
-            ToId = body.To.Id,
-            ToIds = body.To.Ids,
-        }, cancellationToken);
+        var result = await engine.AssignTo(from, AssignmentRequestMapper.ToInput(body), cancellationToken);
         return StatusCode(StatusCodes.Status201Created, result.ToDto());
     }
 }
