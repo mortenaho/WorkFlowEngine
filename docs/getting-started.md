@@ -9,6 +9,8 @@ description: از نصب تا اولین فرایند TaskFlow در چند دق�
 
 این صفحه کوتاه‌ترین مسیر برای آشنایی با TaskFlow است. اگر جزئیات بیشتری می‌خواهید، [راهنمای کامل](./usage) را ببینید.
 
+برای یک پیاده‌سازی کامل با UI و BFF، مخزن [employee-termination-app](https://github.com/mortenaho/employee-termination-app) را ببینید: Next.js، فرایند `employeeTermination`، ارجاع موازی با `onAllCompleted`، و `complete-and-end` در انتها. انجین را جدا اجرا کنید (`dotnet run --project src/TaskFlow.Server`) و اپ را با `npm run dev` بالا بیاورید.
+
 ---
 
 ## پیش‌نیازها

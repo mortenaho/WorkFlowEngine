@@ -16,6 +16,9 @@ hero:
       text: راهنمای کامل
       link: /usage
     - theme: alt
+      text: اپ نمونه
+      link: https://github.com/mortenaho/employee-termination-app
+    - theme: alt
       text: معماری
       link: /architecture
 
@@ -35,6 +38,10 @@ features:
   - icon: 🔐
     title: BFF و API Key
     details: React مستقیم به انجین وصل نمی‌شود — کلید فقط در بک‌اند شما می‌ماند.
+  - icon: 🏢
+    title: اپ خاتمه همکاری
+    details: Next.js + BFF روی TaskFlow — فرایند employeeTermination با join موازی و UI کامل.
+    link: https://github.com/mortenaho/employee-termination-app
   - icon: 🐘
     title: Postgres یا حافظه
     details: مهاجرت خودکار، سه جدول اصلی — یا MemoryStore برای توسعهٔ سریع.
