@@ -5,6 +5,7 @@
 .idea/
 .vscode/
 graphify-out/
+examples/
 data/
 .cursor/
 node_modules/

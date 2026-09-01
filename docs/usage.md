@@ -296,7 +296,8 @@ builder.Services.AddTaskFlowClient(o =>
 
 > `ProcessOrchestrator` / `CompleteAndAssignTo` برای callback دستی قدیمی است.
 
-نمونه in-process: [`examples/Scenario`](https://github.com/mortenaho/WorkFlowEngine/blob/main/examples/Scenario/Program.cs).
+نمونه in-process: [`examples/Scenario`](https://github.com/mortenaho/WorkFlowEngine/blob/main/examples/Scenario/Program.cs).  
+اپ کامل با UI: [employee-termination-app](https://github.com/mortenaho/employee-termination-app) (Next.js BFF، همان الگوی بالا).
 
 | مفهوم | معنی |
 |--------|------|
@@ -425,6 +426,8 @@ app.get("/api/inbox", async (req, res) => {
 </div>
 
 فلو خلاصه: کاربر در اپ شما لاگین می‌کند → React به `/api/...` همان اپ درخواست می‌زند → بک‌اند جلسه را چک می‌کند → با `X-API-Key` و `X-Actor-Id` به انجین می‌زند → پاسخ را به React برمی‌گرداند.
+
+پیاده‌سازی مرجع: [employee-termination-app](https://github.com/mortenaho/employee-termination-app) (`app/api/*` + `lib/infrastructure/engine`).
 
 ### ۱. شروع فرایند (Start)
 

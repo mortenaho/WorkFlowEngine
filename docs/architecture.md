@@ -362,6 +362,6 @@ flowchart TB
 ۴. ارتباط مرورگر با بک‌اند روی HTTPS باشد. ارتباط بک‌اند با انجین روی شبکهٔ خصوصی بماند.  
 ۵. خارج از `Development` بدون `WF_API_KEYS` سرویس انجین بالا نمی‌آید تا API باز روی شبکه نماند.
 
-نمونهٔ فراخوانی از React و لایهٔ میانی در [usage.md](usage.md#react-bff) آمده است.
+نمونهٔ فراخوانی از React: [usage.md](usage.md#react-bff). اپ کامل: [employee-termination-app](https://github.com/mortenaho/employee-termination-app).
 
 </div>

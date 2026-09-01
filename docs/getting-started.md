@@ -118,6 +118,7 @@ var started = await tf.Start("purchase", "alice");
 
 | موضوع | لینک |
 |--------|------|
+| اپ نمونه (Next.js BFF) | [employee-termination-app](https://github.com/mortenaho/employee-termination-app) |
 | ارجاع موازی و `onAllCompleted` | [usage → تخصیص موازی](./usage#تخصیص-موازی) |
 | معماری BFF و API Key | [architecture](./architecture#۶-معماری-پیشنهادی-استقرار-react-بک‌اند-و-کلید-api) |
 | Postgres و مهاجرت | [database](./database#۲-نحوهٔ-اتصال-و-مهاجرت-خودکار) |

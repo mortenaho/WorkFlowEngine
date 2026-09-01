@@ -140,6 +140,10 @@ builder.Services.AddTaskFlowClient(o =>
 
 جزئیات: [docs/usage.md — بخش ۲](docs/usage.md).
 
+## نمونهٔ اپلیکیشن
+
+[employee-termination-app](https://github.com/mortenaho/employee-termination-app) — Next.js + BFF روی همین انجین (`employeeTermination`، join موازی، `complete-and-end`). راه‌اندازی: [examples/README.md](examples/README.md).
+
 ## استقرار با Docker
 
 خارج از `Development` متغیر `WF_API_KEYS` اجباری است. برای اجرای محلی با Compose:
