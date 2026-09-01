@@ -761,12 +761,93 @@ body,
   text-align: right;
 }
 
+/* ── Doc layout: فهرست «در این صفحه» سمت راست ─────────────── */
+@media (min-width: 1280px) {
+  .VPDoc.has-aside .container {
+    direction: ltr;
+    flex-direction: row;
+    justify-content: center;
+  }
+
+  .VPDoc.has-aside .content {
+    order: 1;
+    direction: rtl;
+  }
+
+  .VPDoc.has-aside .aside {
+    order: 2 !important;
+    padding-left: 32px !important;
+    padding-right: 0 !important;
+  }
+
+  .VPDoc.has-aside .aside.left-aside {
+    order: 2 !important;
+    padding-left: 32px !important;
+    padding-right: 0 !important;
+  }
+}
+
+/* Outline TOC — راست‌چین با خط راهنما در سمت راست */
 .VPDoc .aside-container {
   direction: rtl;
 }
 
+.VPDoc .VPDocAsideOutline .content {
+  border-left: none !important;
+  border-right: 2px solid var(--vp-c-divider);
+  padding-left: 0 !important;
+  padding-right: 16px !important;
+}
+
+.VPDoc .VPDocAsideOutline .outline-marker {
+  left: auto !important;
+  right: -1px !important;
+}
+
+.VPDoc .VPDocAsideOutline .outline-title {
+  text-align: right;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--vp-c-text-1);
+  margin-bottom: 6px;
+}
+
 .VPDoc .aside-container .outline-link {
   text-align: right;
+  display: block;
+  padding: 5px 0;
+  line-height: 1.55;
+  font-size: 0.84rem;
+  border-radius: 6px;
+  transition: color 0.15s;
+}
+
+.VPDoc .aside-container .outline-link:hover {
+  color: var(--vp-c-brand-1);
+}
+
+.VPDoc .aside-container .outline-link.active {
+  color: var(--vp-c-brand-1);
+  font-weight: 600;
+}
+
+.VPDoc .VPDocOutlineItem.root > li {
+  margin-bottom: 2px;
+}
+
+.VPDoc .VPDocOutlineItem.nested {
+  margin-top: 2px;
+  padding-inline-end: 12px;
+}
+
+.VPDoc .VPDocOutlineItem.nested .outline-link {
+  font-size: 0.8rem;
+  color: var(--vp-c-text-2);
+  padding: 3px 0;
+}
+
+.VPDoc .VPDocOutlineItem.nested .outline-link.active {
+  color: var(--vp-c-brand-1);
 }
 
 .VPSidebarItem .text {

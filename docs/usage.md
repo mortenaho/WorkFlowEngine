@@ -198,9 +198,9 @@ var refer = await tf.AssignTo("sara", new AssignToInput
 **به زبان ساده:**
 
 1. با `AssignTo` و `Users` کار را هم‌زمان به چند نفر بفرست و `onAllCompleted` را پر کن.  
-2. هر نفر فقط `CompleteTask` می‌زند (بدون orchestrator).  
-3. تا وقتی همه تمام نکرده‌اند، `next` در پاسخ `null` است.  
-4. وقتی آخرین نفر تمام کرد، همان پاسخ `CompleteTask` فیلد `next` را با ارجاع جدید برمی‌گرداند.
+2. هر نفر فقط `CompleteTask` می‌زند — BFF نیازی به دانستن موازی بودن تسک ندارد.  
+3. موتور بعد از هر تکمیل event داخلی (`TaskCompleted`) می‌فرستد و بررسی می‌کند همه تمام شده‌اند یا نه.  
+4. وقتی آخرین نفر تمام کرد، `ParallelJoinHandler` خودکار `AssignTo` بعدی را می‌سازد.
 
 #### تصویر کلی جریان
 
@@ -213,7 +213,7 @@ flowchart TD
     parallel --> c["Task: tina"]
     m --> join{"AllCompleted?"}
     c --> join
-    join -->|"خیر — هنوز باز است"| wait["صبر تا نفر بعدی<br/>Next = null"]
+    join -->|"خیر — هنوز باز است"| wait["صبر تا نفر بعدی<br/>موتور join نمی‌زند"]
     join -->|"بله — همه تمام شدند"| next["AssignTo خودکار<br/>→ legal"]
     next --> claim["Claim توسط mortenaho"]
     claim --> finish(["Complete"])
@@ -316,15 +316,11 @@ var parallel = await tf.AssignTo("sara", new AssignToInput
     },
 });
 
-AssignToResult? legal = null;
 foreach (var task in parallel.Tasks)
-{
-    var done = await tf.CompleteTask(task.Id, task.AssigneeId, "تأیید شد");
+    await tf.CompleteTask(task.Id, task.AssigneeId, "تأیید شد");
 
-    // فقط وقتی آخرین نفر تمام کند، next پر می‌شود
-    if (done.Next is not null)
-        legal = done.Next;
-}
+// بعد از join، تسک حقوقی در کارتابل گروه legal ظاهر می‌شود — بدون بررسی next
+var legalInbox = await tf.PendingTasks(group: "legal");
 ```
 
 REST معادل:
@@ -348,9 +344,9 @@ curl -s -X POST http://127.0.0.1:8081/v1/assignments \
 
 </div>
 
-#### نمونه BFF: یک endpoint برای همهٔ تسک‌های موازی
+#### نمونه BFF: یک endpoint برای همهٔ تسک‌ها
 
-در پروداکشن کاربر مستقیم TaskFlow را صدا نمی‌زند. UI دکمه «تأیید» را می‌زند؛ **BFF شما** فقط `CompleteTask` می‌زند — قانون مرحلهٔ بعد از قبل در `onAllCompleted` ذخیره شده است.
+در پروداکشن کاربر مستقیم TaskFlow را صدا نمی‌زند. UI دکمه «تأیید» را می‌زند؛ **BFF شما** فقط `CompleteTask` می‌زند. نیازی نیست بدانید تسک موازی است یا نه — قانون مرحلهٔ بعد از قبل در `onAllCompleted` ذخیره شده و `ParallelJoinHandler` داخل موتور join و رفتن به مرحله بعد را مدیریت می‌کند.
 
 اگر پنج نفر موازی دارید، **پنج endpoint جدا لازم نیست** — همه از یک مسیر با `taskId` متفاوت استفاده می‌کنند:
 
@@ -365,7 +361,7 @@ POST /api/tasks/task-3/approve   ← hamid
 
 </div>
 
-همان handler برای همه؛ فقط وقتی **آخرین** نفر complete کرد `next` پر می‌شود.
+همان handler برای همه — BFF فقط تسک همان کاربر را می‌بندد؛ موتور بقیه را مدیریت می‌کند.
 
 <div dir="ltr">
 
@@ -391,23 +387,22 @@ public sealed class TaskApprovalController : ControllerBase
     {
         var userId = User.FindFirst("sub")?.Value ?? ""; // از SSO
 
-        var result = await _tf.CompleteTask(taskId, userId, body.Note ?? "تأیید شد");
+        await _tf.CompleteTask(taskId, userId, body.Note ?? "تأیید شد");
 
-        if (result.Next is not null)
-            return Ok(new { status = "all_done", next = result.Next });
-
-        return Ok(new { status = "waiting_for_others" });
+        return Ok(new { status = "approved" });
     }
 }
 ```
 
 </div>
 
-| complete توسط | `AllCompleted` | پاسخ BFF |
-|---------------|----------------|----------|
-| نفر ۱ از ۵ | `false` | `{ status: "waiting_for_others" }` |
-| نفر ۲ تا ۴ | `false` | همان |
-| نفر ۵ (آخر) | `true` | `{ status: "all_done", next: … legal }` |
+| complete توسط | چه اتفاقی در موتور می‌افتد |
+|---------------|---------------------------|
+| نفر ۱ از ۵ | تسک او بسته می‌شود؛ join هنوز کامل نشده |
+| نفر ۲ تا ۴ | همان |
+| نفر ۵ (آخر) | join کامل می‌شود؛ `ParallelJoinHandler` خودکار `AssignTo` بعدی (مثلاً legal) را می‌سازد |
+
+> اگر UI همان لحظه باید بداند join تمام شده، می‌توانید `result.Next` را بررسی کنید — **اختیاری** است و برای BFF الزامی نیست. معمولاً کارتابل (`PendingTasks`) یا نوتیفیکیشن کافی است.
 
 ثبت `TaskFlowClient` در `Program.cs` میکروسرویس:
 
@@ -433,9 +428,9 @@ builder.Services.AddTaskFlowClient(o =>
 | `onAllCompleted` | مرحلهٔ بعد؛ موتور بعد از join خودکار `AssignTo` می‌زند |
 | `join: all` | حالت join (پیش‌فرض وقتی `onAllCompleted` داده شود) |
 | `Group` + `ToId` | یک تسک مشترک؛ یکی Claim می‌کند |
-| `CompleteTask` | تسک را می‌بندد؛ در join موازی `next` را برمی‌گرداند |
+| `CompleteTask` | تسک را می‌بندد؛ موتور join و مرحله بعد را خودکار مدیریت می‌کند |
 | `CompleteAndAssignTo` | Legacy — callback دستی برای مرحله بعد |
-| `done.Next` | ارجاع تازه؛ تا قبل از join برابر `null` است |
+| `done.Next` | (اختیاری) ارجاع تازه بعد از join — فقط برای UX فوری یا دیباگ؛ BFF لازم نیست بررسی کند |
 
 ### کارتابل، تکمیل، و فرایندهای کاربر
 

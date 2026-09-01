@@ -30,19 +30,16 @@ var parallel = await eng.AssignTo("sara", new AssignToInput
 });
 Console.WriteLine($"parallel {parallel.InstanceId} tasks={parallel.Tasks.Count}");
 
-AssignToResult? legal = null;
 foreach (var task in parallel.Tasks)
 {
-    var done = await eng.CompleteTask(task.Id, task.AssigneeId, "تأیید شد");
-    Console.WriteLine(
-        $"complete {task.AssigneeId} allCompleted={done.Completion.AllCompleted} next={(done.Next is null ? "—" : done.Next.InstanceId)}");
-    if (done.Next is not null)
-        legal = done.Next;
+    await eng.CompleteTask(task.Id, task.AssigneeId, "تأیید شد");
+    Console.WriteLine($"complete {task.AssigneeId}");
 }
 
-if (legal?.Task is null)
-    throw new InvalidOperationException("expected auto-advance to legal after parallel join");
+var legalTask = (await eng.PendingTasks("", "legal"))
+    .FirstOrDefault(t => t.ParentInstanceId == started.InstanceId)
+    ?? throw new InvalidOperationException("expected auto-advance to legal after parallel join");
 
-await eng.ClaimTask(legal.Task.Id, "mortenaho");
-var last = await eng.CompleteTask(legal.Task.Id, "mortenaho", "ok");
+await eng.ClaimTask(legalTask.Id, "mortenaho");
+var last = await eng.CompleteTask(legalTask.Id, "mortenaho", "ok");
 Console.WriteLine($"legal allCompleted={last.Completion.AllCompleted}");

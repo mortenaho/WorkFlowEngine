@@ -28,7 +28,7 @@ flowchart TD
     parallel --> b[tina تمام می‌کند]
     a --> gate{هر دو تمام شدند؟}
     b --> gate
-    gate -->|"هنوز نه"| wait[Next خالی می‌ماند]
+    gate -->|"هنوز نه"| wait[موتور صبر می‌کند]
     gate -->|"بله"| legal["AssignTo خودکار به گروه legal"]
     legal --> claim[mortenaho Claim می‌کند]
     claim --> done([Complete])
@@ -42,6 +42,6 @@ flowchart TD
 
 ### نکتهٔ مهم
 
-موتور بعد از هر `CompleteTask` event داخلی می‌فرستد. اگر `onAllCompleted` در AssignTo موازی تعریف شده باشد، `ParallelJoinHandler` بعد از join خودکار مرحله بعد را می‌سازد. الگوی BFF: [docs/usage.md](../docs/usage.md#نمونه-bff-یک-endpoint-برای-همهٔ-تسک‌های-موازی).
+موتور بعد از هر `CompleteTask` event داخلی می‌فرستد. اگر `onAllCompleted` در AssignTo موازی تعریف شده باشد، `ParallelJoinHandler` بعد از join خودکار مرحله بعد را می‌سازد — BFF فقط `CompleteTask` می‌زند و نیازی به دانستن موازی بودن ندارد. الگوی BFF: [docs/usage.md](../docs/usage.md#نمونه-bff-یک-endpoint-برای-همهٔ-تسک‌ها).
 
 </div>
